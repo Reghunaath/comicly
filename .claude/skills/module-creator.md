@@ -1,4 +1,5 @@
-# Frontend Module Creator
+# Skill: Module Creator (v1)
+
 
 ## Purpose
 
