@@ -1,3 +1,4 @@
+// app/comic/[id]/loading.tsx
 export default function Loading() {
-  return <div>Loading comic...</div>;
+  return <div>Loading...</div>;
 }

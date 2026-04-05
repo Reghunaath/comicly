@@ -1,5 +1,6 @@
 "use client";
 
+// app/comic/[id]/error.tsx
 export default function Error({
   error,
   reset,
@@ -9,7 +10,7 @@ export default function Error({
 }) {
   return (
     <div>
-      <p>Failed to load comic.</p>
+      <p>Something went wrong.</p>
       <button onClick={reset}>Retry</button>
     </div>
   );
