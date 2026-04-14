@@ -2,15 +2,16 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Read|View|Write|Edit|MultiEdit|Bash",
+        "matcher": "Read|Write|Edit|MultiEdit|Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -ExecutionPolicy Bypass -NoProfile -File .claude/hooks/block-env-local.ps1",
+            "command": "powershell -ExecutionPolicy Bypass -NoProfile -File $CLAUDE_PROJECT_DIR/.claude/hooks/block-env-local.ps1",
             "timeout": 5
           }
         ]
       }
     ]
-  }
+  },
+  "autoMemoryEnabled": true
 }
