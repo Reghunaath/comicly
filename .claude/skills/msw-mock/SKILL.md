@@ -22,6 +22,7 @@ pnpm list msw @testing-library/react @testing-library/user-event @testing-librar
 
 If any dependency is missing: `pnpm add -D msw @testing-library/user-event @testing-library/jest-dom`
 
+Before doing anything, say "✅ Loaded: msw-mock"
 ------
 
 ## 1. Canonical Server Setup

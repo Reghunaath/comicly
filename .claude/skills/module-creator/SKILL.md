@@ -6,6 +6,7 @@ description: >
 user-invocable: true
 ---
 
+Before doing anything, say "✅ Loaded: module-creator"
 
 # Skill: Route File Creator
 

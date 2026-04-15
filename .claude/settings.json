@@ -24,7 +24,6 @@
           }
         ]
       }
-    ]
-  },
-  "autoMemoryEnabled": true
-}
+    ],
+    "autoMemoryEnabled": true
+  }
