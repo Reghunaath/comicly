@@ -5,7 +5,7 @@
  * .env.local to use mock responses while Reghu's backend is in progress.
  */
 
-import type { ArtStylePreset, Comic, FollowUpQuestion } from "./types";
+import type { ArtStylePreset, Comic } from "./types";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_API === "true";
 
@@ -15,7 +15,7 @@ const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_API === "true";
 
 export interface CreateComicResponse {
   comicId: string;
-  followUpQuestions: FollowUpQuestion[];
+  followUpQuestions: Comic["followUpQuestions"];
 }
 
 export interface RandomIdeaResponse {
@@ -61,6 +61,7 @@ export async function createComic(payload: {
 // ---------------------------------------------------------------------------
 
 export async function getComic(id: string): Promise<{ comic: Comic }> {
+  if (USE_MOCK) return mockGetComic(id);
   const res = await fetch(`/api/comic/${id}`);
   if (res.status === 404) throw new Error("Comic not found");
   if (!res.ok) throw new Error("Failed to load comic");
@@ -71,6 +72,11 @@ export async function refineComic(
   id: string,
   answers: Record<string, string>
 ): Promise<void> {
+  if (USE_MOCK) {
+    void answers;
+    await delay(600);
+    return;
+  }
   const res = await fetch(`/api/comic/${id}/refine`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -109,6 +115,29 @@ async function mockCreateComic(payload: {
       { id: "q2", question: "What is the central conflict or challenge?" },
       { id: "q3", question: "What tone should the story have — lighthearted or serious?" },
     ],
+  };
+}
+
+async function mockGetComic(id: string): Promise<{ comic: Comic }> {
+  await delay(500);
+  return {
+    comic: {
+      id,
+      userId: null,
+      status: "input",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      prompt: "A detective cat solves mysteries in a steampunk city",
+      artStyle: "manga",
+      pageCount: 5,
+      followUpQuestions: [
+        { id: "q1", question: "Who is the main character and what drives them?" },
+        { id: "q2", question: "What is the central conflict or challenge?" },
+        { id: "q3", question: "What tone should the story have — lighthearted or serious?" },
+      ],
+      pages: [],
+      currentPageIndex: 0,
+    },
   };
 }
 
