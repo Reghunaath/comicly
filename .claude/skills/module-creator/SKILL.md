@@ -1,3 +1,12 @@
+---
+name: route-file-creator
+description: >
+  Create Next.js App Router file structures from a route path and type (public/protected/admin).
+  Use when adding new pages, dynamic routes, or route groups to the Next.js app/ directory.
+user-invocable: true
+---
+
+
 # Skill: Route File Creator
 
 Create Next.js App Router file structures from a route path.

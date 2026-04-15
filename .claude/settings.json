@@ -11,6 +11,19 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/frontend-lint.mjs\"",
+            "timeout": 45,
+            "statusMessage": "Running ESLint & tsc..."
+          }
+        ]
+      }
     ]
   },
   "autoMemoryEnabled": true
