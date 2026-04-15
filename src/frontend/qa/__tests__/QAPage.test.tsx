@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
@@ -60,15 +60,15 @@ function mockComic(overrides: Record<string, unknown> = {}) {
 // ---------------------------------------------------------------------------
 
 const server = setupServer(
-  http.get(`/api/comic/${MOCK_COMIC_ID}`, () =>
-    HttpResponse.json({ comic: mockComic() })
+  http.get("/api/comic/:id", ({ params }) =>
+    HttpResponse.json({ comic: mockComic({ id: params.id as string }) })
   ),
-  http.post(`/api/comic/${MOCK_COMIC_ID}/refine`, () =>
+  http.post("/api/comic/:id/refine", () =>
     HttpResponse.json({ success: true })
   )
 );
 
-beforeAll(() => server.listen());
+beforeAll(() => server.listen({ onUnhandledRequest: "warn" }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
@@ -132,8 +132,8 @@ describe("Question display", () => {
 
   it("shows a fallback message when comic has no follow-up questions", async () => {
     server.use(
-      http.get(`/api/comic/${MOCK_COMIC_ID}`, () =>
-        HttpResponse.json({ comic: mockComic({ followUpQuestions: [] }) })
+      http.get("/api/comic/:id", ({ params }) =>
+        HttpResponse.json({ comic: mockComic({ id: params.id as string, followUpQuestions: [] }) })
       )
     );
     setup();
@@ -151,7 +151,7 @@ describe("Skip All", () => {
   it("calls POST /refine with empty answers and navigates to /script/:id", async () => {
     let capturedBody: unknown = null;
     server.use(
-      http.post(`/api/comic/${MOCK_COMIC_ID}/refine`, async ({ request }) => {
+      http.post("/api/comic/:id/refine", async ({ request }) => {
         capturedBody = await request.json();
         return HttpResponse.json({ success: true });
       })
@@ -161,14 +161,16 @@ describe("Skip All", () => {
     await screen.findByRole("button", { name: /skip all/i });
     await user.click(screen.getByRole("button", { name: /skip all/i }));
 
-    expect(capturedBody).toMatchObject({ answers: {} });
-    expect(mockPush).toHaveBeenCalledWith(`/script/${MOCK_COMIC_ID}`);
+    await waitFor(() => {
+      expect(capturedBody).toMatchObject({ answers: {} });
+      expect(mockPush).toHaveBeenCalledWith(`/script/${MOCK_COMIC_ID}`);
+    });
   });
 
   it("submits empty answers even when some inputs are filled", async () => {
     let capturedBody: unknown = null;
     server.use(
-      http.post(`/api/comic/${MOCK_COMIC_ID}/refine`, async ({ request }) => {
+      http.post("/api/comic/:id/refine", async ({ request }) => {
         capturedBody = await request.json();
         return HttpResponse.json({ success: true });
       })
@@ -181,7 +183,9 @@ describe("Skip All", () => {
     await user.type(inputs[0], "Some answer");
 
     await user.click(screen.getByRole("button", { name: /skip all/i }));
-    expect(capturedBody).toMatchObject({ answers: {} });
+    await waitFor(() => {
+      expect(capturedBody).toMatchObject({ answers: {} });
+    });
   });
 });
 
@@ -193,7 +197,7 @@ describe("Submit", () => {
   it("calls POST /refine with filled answers and navigates to /script/:id", async () => {
     let capturedBody: unknown = null;
     server.use(
-      http.post(`/api/comic/${MOCK_COMIC_ID}/refine`, async ({ request }) => {
+      http.post("/api/comic/:id/refine", async ({ request }) => {
         capturedBody = await request.json();
         return HttpResponse.json({ success: true });
       })
@@ -208,20 +212,24 @@ describe("Submit", () => {
 
     await user.click(screen.getByRole("button", { name: /submit/i }));
 
-    expect(capturedBody).toMatchObject({
-      answers: {
-        q1: "Inspector Whiskers",
-        q2: "A stolen clockwork diamond",
-      },
+    await waitFor(() => {
+      expect(capturedBody).toMatchObject({
+        answers: {
+          q1: "Inspector Whiskers",
+          q2: "A stolen clockwork diamond",
+        },
+      });
+      expect(mockPush).toHaveBeenCalledWith(`/script/${MOCK_COMIC_ID}`);
     });
-    expect(mockPush).toHaveBeenCalledWith(`/script/${MOCK_COMIC_ID}`);
   });
 
   it("navigates to /script/:id even when all inputs are left empty", async () => {
     const { user } = setup();
     await screen.findByRole("button", { name: /submit/i });
     await user.click(screen.getByRole("button", { name: /submit/i }));
-    expect(mockPush).toHaveBeenCalledWith(`/script/${MOCK_COMIC_ID}`);
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith(`/script/${MOCK_COMIC_ID}`);
+    });
   });
 });
 
@@ -233,7 +241,7 @@ describe("Loading state", () => {
   it("disables Skip All and Submit while POST /refine is in-flight", async () => {
     let resolvePost!: (value: Response) => void;
     server.use(
-      http.post(`/api/comic/${MOCK_COMIC_ID}/refine`, () =>
+      http.post("/api/comic/:id/refine", () =>
         new Promise<Response>((res) => {
           resolvePost = res;
         })
@@ -257,7 +265,7 @@ describe("Loading state", () => {
   it("inputs are disabled while POST /refine is in-flight", async () => {
     let resolvePost!: (value: Response) => void;
     server.use(
-      http.post(`/api/comic/${MOCK_COMIC_ID}/refine`, () =>
+      http.post("/api/comic/:id/refine", () =>
         new Promise<Response>((res) => {
           resolvePost = res;
         })
@@ -286,7 +294,7 @@ describe("Loading state", () => {
 describe("Error — 404 on fetch", () => {
   it("shows an error state when the comic is not found", async () => {
     server.use(
-      http.get(`/api/comic/${MOCK_COMIC_ID}`, () =>
+      http.get("/api/comic/:id", () =>
         HttpResponse.json({ error: "Comic not found" }, { status: 404 })
       )
     );
@@ -300,7 +308,7 @@ describe("Error — 404 on fetch", () => {
 
   it("shows a Go back link when fetch fails", async () => {
     server.use(
-      http.get(`/api/comic/${MOCK_COMIC_ID}`, () =>
+      http.get("/api/comic/:id", () =>
         HttpResponse.json({ error: "Comic not found" }, { status: 404 })
       )
     );
@@ -312,7 +320,7 @@ describe("Error — 404 on fetch", () => {
 
   it("does not render the question form on fetch error", async () => {
     server.use(
-      http.get(`/api/comic/${MOCK_COMIC_ID}`, () =>
+      http.get("/api/comic/:id", () =>
         HttpResponse.json({ error: "Comic not found" }, { status: 404 })
       )
     );
@@ -331,7 +339,7 @@ describe("Error — 404 on fetch", () => {
 describe("Error — POST /refine failure", () => {
   it("shows an inline error message when POST /refine returns 500", async () => {
     server.use(
-      http.post(`/api/comic/${MOCK_COMIC_ID}/refine`, () =>
+      http.post("/api/comic/:id/refine", () =>
         HttpResponse.json({ error: "Internal server error" }, { status: 500 })
       )
     );
@@ -347,7 +355,7 @@ describe("Error — POST /refine failure", () => {
 
   it("re-enables buttons after a POST /refine error", async () => {
     server.use(
-      http.post(`/api/comic/${MOCK_COMIC_ID}/refine`, () =>
+      http.post("/api/comic/:id/refine", () =>
         HttpResponse.json({ error: "Internal server error" }, { status: 500 })
       )
     );
@@ -364,7 +372,7 @@ describe("Error — POST /refine failure", () => {
 
   it("does not navigate after a POST /refine error", async () => {
     server.use(
-      http.post(`/api/comic/${MOCK_COMIC_ID}/refine`, () =>
+      http.post("/api/comic/:id/refine", () =>
         HttpResponse.json({ error: "Internal server error" }, { status: 500 })
       )
     );
