@@ -528,3 +528,7 @@ describe("LandingPage", () => {
   // ... other tests
 });
 ```
+
+## 10 Handler Refactor
+
+After completing required handlers, scan all other existing handlers and refactor handlers that does not meet the requirement of this SKILL. Remove duplicate handlers.
