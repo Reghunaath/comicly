@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -ExecutionPolicy Bypass -NoProfile -File $CLAUDE_PROJECT_DIR/.claude/hooks/file-blocker.ps1",
+            "command": "powershell -ExecutionPolicy Bypass -NoProfile -File \"%CLAUDE_PROJECT_DIR%\\.claude\\hooks\\file-blocker.ps1\"",
             "timeout": 5
           }
         ]
@@ -18,12 +18,25 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/frontend-lint.mjs\"",
+            "command": "node \"%CLAUDE_PROJECT_DIR%\\.claude\\hooks\\frontend-lint.mjs\"",
             "timeout": 45,
             "statusMessage": "Running ESLint & tsc..."
           }
         ]
       }
     ],
-    "autoMemoryEnabled": true
-  }
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -NoProfile -File \"%CLAUDE_PROJECT_DIR%\\.claude\\hooks\\gitleaks-scan.ps1\"",
+            "timeout": 60,
+            "statusMessage": "Scanning for secrets with Gitleaks..."
+          }
+        ]
+      }
+    ]
+  },
+  "autoMemoryEnabled": true
+}
