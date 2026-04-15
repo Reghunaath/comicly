@@ -5,7 +5,7 @@
  * .env.local to use mock responses while Reghu's backend is in progress.
  */
 
-import type { ArtStylePreset, Comic } from "./types";
+import type { ArtStylePreset, Comic, Script } from "./types";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_API === "true";
 
@@ -86,8 +86,41 @@ export async function refineComic(
 }
 
 // ---------------------------------------------------------------------------
+// Script Review endpoints (#10)
+// ---------------------------------------------------------------------------
+
+export async function generateScript(id: string): Promise<{ script: Script }> {
+  if (USE_MOCK) return mockGenerateScript(id);
+  const res = await fetch(`/api/comic/${id}/script/generate`, { method: "POST" });
+  if (!res.ok) throw new Error("Failed to generate script");
+  return res.json();
+}
+
+export async function approveScript(id: string): Promise<void> {
+  if (USE_MOCK) {
+    await delay(400);
+    return;
+  }
+  const res = await fetch(`/api/comic/${id}/approve`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ generationMode: "automated" }),
+  });
+  if (!res.ok) throw new Error("Failed to approve script");
+}
+
+export async function generateAllPages(id: string): Promise<void> {
+  if (USE_MOCK) return mockGenerateAllPages(id);
+  const res = await fetch(`/api/comic/${id}/generate-all`, { method: "POST" });
+  if (!res.ok) throw new Error("Failed to start generation");
+}
+
+// ---------------------------------------------------------------------------
 // Mock implementations (dev-only)
 // ---------------------------------------------------------------------------
+
+// Tracks which comic IDs have completed mock generation (for polling)
+const _mockCompletedComics = new Set<string>();
 
 async function mockGetRandomIdea(): Promise<RandomIdeaResponse> {
   await delay(400);
@@ -120,11 +153,12 @@ async function mockCreateComic(payload: {
 
 async function mockGetComic(id: string): Promise<{ comic: Comic }> {
   await delay(500);
+  const isComplete = _mockCompletedComics.has(id);
   return {
     comic: {
       id,
       userId: null,
-      status: "input",
+      status: isComplete ? "complete" : "input",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       prompt: "A detective cat solves mysteries in a steampunk city",
@@ -136,9 +170,66 @@ async function mockGetComic(id: string): Promise<{ comic: Comic }> {
         { id: "q3", question: "What tone should the story have — lighthearted or serious?" },
       ],
       pages: [],
-      currentPageIndex: 0,
+      currentPageIndex: isComplete ? 5 : 0,
     },
   };
+}
+
+async function mockGenerateScript(id: string): Promise<{ script: Script }> {
+  void id;
+  await delay(1500);
+  return {
+    script: {
+      title: "Inspector Whiskers and the Clockwork Diamond",
+      synopsis:
+        "A detective cat in a steampunk city must recover a stolen diamond before the city's clock tower stops forever.",
+      pages: [
+        {
+          pageNumber: 1,
+          panels: [
+            {
+              panelNumber: 1,
+              description:
+                "Wide establishing shot of a foggy steampunk city at night — gears, pipes, and gas lamps everywhere.",
+              dialogue: [{ speaker: "Narrator", text: "The city of Cogsworth never sleeps." }],
+              caption: "A city of wonders... and secrets.",
+            },
+            {
+              panelNumber: 2,
+              description:
+                "Close-up of Inspector Whiskers, a tabby cat in a long coat and monocle, studying a telegram.",
+              dialogue: [
+                { speaker: "Inspector Whiskers", text: "A stolen diamond, you say?" },
+                { speaker: "Client", text: "The Clockwork Diamond — if it's not returned by dawn, the tower stops." },
+              ],
+            },
+          ],
+        },
+        {
+          pageNumber: 2,
+          panels: [
+            {
+              panelNumber: 1,
+              description: "Inspector Whiskers leaps across rooftops, silhouetted against a full moon.",
+              dialogue: [],
+              caption: "No time to lose.",
+            },
+            {
+              panelNumber: 2,
+              description:
+                "Interior of a clockwork vault — gears spinning, the diamond glowing in a case.",
+              dialogue: [{ speaker: "Inspector Whiskers", text: "There you are." }],
+            },
+          ],
+        },
+      ],
+    },
+  };
+}
+
+async function mockGenerateAllPages(id: string): Promise<void> {
+  await delay(1000);
+  _mockCompletedComics.add(id);
 }
 
 function delay(ms: number) {
