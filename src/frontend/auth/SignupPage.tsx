@@ -4,11 +4,9 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { supabase } from "@/frontend/lib/supabase-browser";
-
-function safeRedirect(value: string | null): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
-  return value;
-}
+import { safeRedirect } from "@/frontend/lib/auth";
+import AuthField from "./AuthField";
+import GoogleOAuthSection from "./GoogleOAuthSection";
 
 export default function SignupPage() {
   const searchParams = useSearchParams();
@@ -100,68 +98,29 @@ export default function SignupPage() {
           Create your account
         </h1>
 
-        <button
-          type="button"
-          onClick={handleOAuth}
-          className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-surface py-2.5 text-sm font-medium text-text transition-colors hover:bg-surface-alt"
-        >
-          Continue with Google
-        </button>
-
-        <div className="mb-4 flex items-center gap-3">
-          <hr className="flex-1 border-border" />
-          <span className="text-xs text-text-secondary">or</span>
-          <hr className="flex-1 border-border" />
-        </div>
+        <GoogleOAuthSection onClick={handleOAuth} />
 
         <form onSubmit={handleSubmit} noValidate>
-          <div className="mb-4">
-            <label
-              htmlFor="email"
-              className="mb-1 block text-sm font-medium text-text"
-            >
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={[
-                "w-full rounded-lg border px-3 py-2 text-sm text-text outline-none transition-colors",
-                "focus:ring-2 focus:ring-border-focus",
-                fieldErrors.email ? "border-error" : "border-border",
-              ].join(" ")}
-            />
-            {fieldErrors.email && (
-              <p className="mt-1 text-xs text-error">{fieldErrors.email}</p>
-            )}
-          </div>
-
-          <div className="mb-6">
-            <label
-              htmlFor="password"
-              className="mb-1 block text-sm font-medium text-text"
-            >
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={[
-                "w-full rounded-lg border px-3 py-2 text-sm text-text outline-none transition-colors",
-                "focus:ring-2 focus:ring-border-focus",
-                fieldErrors.password ? "border-error" : "border-border",
-              ].join(" ")}
-            />
-            {fieldErrors.password && (
-              <p className="mt-1 text-xs text-error">{fieldErrors.password}</p>
-            )}
-          </div>
+          <AuthField
+            id="email"
+            label="Email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={setEmail}
+            error={fieldErrors.email}
+            className="mb-4"
+          />
+          <AuthField
+            id="password"
+            label="Password"
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={setPassword}
+            error={fieldErrors.password}
+            className="mb-6"
+          />
 
           {error && (
             <p className="mb-4 rounded-lg bg-error-light px-3 py-2 text-sm text-error">
