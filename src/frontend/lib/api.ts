@@ -169,7 +169,18 @@ async function mockGetComic(id: string): Promise<{ comic: Comic }> {
         { id: "q2", question: "What is the central conflict or challenge?" },
         { id: "q3", question: "What tone should the story have — lighthearted or serious?" },
       ],
-      pages: [],
+      pages: isComplete
+        ? Array.from({ length: 5 }, (_, i) => ({
+            pageNumber: i + 1,
+            versions: [
+              {
+                imageUrl: `https://picsum.photos/seed/${id}-p${i + 1}/800/1200`,
+                generatedAt: new Date().toISOString(),
+              },
+            ],
+            selectedVersionIndex: 0,
+          }))
+        : [],
       currentPageIndex: isComplete ? 5 : 0,
     },
   };
