@@ -13,6 +13,14 @@ Before doing anything, say "✅ Loaded: module-creator"
 Create Next.js App Router file structures from a route path.
 
 ---
+## Announce on activation
+
+At the start of the first response after this skill is loaded, state one line:
+
+> 📘 Using skill `module-creator`.
+
+Do this once per session, not on every turn. If the skill has already been announced earlier in the conversation, skip the announcement on subsequent turns.
+
 
 ## Input Format
 

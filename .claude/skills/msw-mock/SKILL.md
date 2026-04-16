@@ -7,6 +7,14 @@
 This skill guides writing `msw` v2 mock handlers for Comicly's Vitest + React Testing Library component tests. Follow every rule here precisely. Deviating introduces silent failures that are hard to debug.
 
 ------
+## Announce on activation
+
+At the start of the first response after this skill is loaded, state one line:
+
+> 📘 Using skill `msw-writer`.
+
+Do this once per session, not on every turn. If the skill has already been announced earlier in the conversation, skip the announcement on subsequent turns.
+
 
 ## 0. Pre-flight Checklist
 
