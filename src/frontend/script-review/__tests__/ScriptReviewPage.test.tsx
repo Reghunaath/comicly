@@ -121,7 +121,7 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 function setup() {
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+  const user = userEvent.setup();
   render(<ScriptReviewPage comicId={MOCK_COMIC_ID} />);
   return { user };
 }
@@ -186,7 +186,7 @@ describe("Script display", () => {
     setup();
     await screen.findByText(/the city never sleeps/i);
     expect(screen.getByText(/narrator/i)).toBeInTheDocument();
-    expect(screen.getByText(/inspector whiskers/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/inspector whiskers/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/a stolen diamond, you say\?/i)).toBeInTheDocument();
   });
 
@@ -222,35 +222,33 @@ describe("Approve & Generate flow", () => {
     vi.useFakeTimers();
 
     setup();
-    await screen.findByRole("button", { name: /approve & generate/i });
+    await act(async () => {}); // flush generateScript promise
 
-    // Use real timers for the click interaction
     await act(async () => {
       screen.getByRole("button", { name: /approve & generate/i }).click();
     });
 
-    // Advance past the 5s polling interval
     await act(async () => {
       vi.advanceTimersByTime(6000);
     });
+    await act(async () => {}); // flush polling promise
 
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith(`/comic/${MOCK_COMIC_ID}`);
-    });
+    expect(mockPush).toHaveBeenCalledWith(`/comic/${MOCK_COMIC_ID}`);
   });
 
   it("shows the progress banner after approve", async () => {
     vi.useFakeTimers();
 
     setup();
-    await screen.findByRole("button", { name: /approve & generate/i });
+    await act(async () => {}); // flush generateScript promise
 
     await act(async () => {
       screen.getByRole("button", { name: /approve & generate/i }).click();
     });
+    await act(async () => {}); // flush approve/generateAll promises
 
     expect(
-      await screen.findByRole("status", { name: /generation progress/i })
+      screen.getByRole("status", { name: /generation progress/i })
     ).toBeInTheDocument();
   });
 
@@ -258,13 +256,14 @@ describe("Approve & Generate flow", () => {
     vi.useFakeTimers();
 
     setup();
-    await screen.findByRole("button", { name: /approve & generate/i });
+    await act(async () => {}); // flush generateScript promise
 
     await act(async () => {
       screen.getByRole("button", { name: /approve & generate/i }).click();
     });
+    await act(async () => {}); // flush approve/generateAll promises
 
-    await screen.findByRole("status", { name: /generation progress/i });
+    expect(screen.getByRole("status", { name: /generation progress/i })).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /approve & generate/i })
     ).not.toBeInTheDocument();

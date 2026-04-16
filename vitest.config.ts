@@ -10,7 +10,12 @@ export default defineConfig({
     globals: true,
     coverage: {
       provider: "v8",
-      include: ["src/frontend/landing/**"],
+      include: [
+        "src/frontend/landing/**",
+        "src/frontend/qa/**",
+        "src/frontend/script-review/**",
+        "src/frontend/comic-viewer/**",
+      ],
       thresholds: {
         lines: 70,
         branches: 70,
