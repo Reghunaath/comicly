@@ -68,6 +68,19 @@ When testing completed code:
 - Mock external dependencies (APIs, third-party libraries) at the module boundary
 - Never use `any` in TypeScript test files — maintain strict typing
 
+### API Mocking — Upstream Dependency on `msw-mock` Skill
+
+When any test needs to intercept HTTP calls, you **must** follow the patterns defined in `.claude/skills/msw-mock/SKILL.md`. Do not invent your own MSW handler patterns. Specifically:
+
+- Always import `setupServer` from `msw/node`, never `msw/browser`
+- Use the canonical lifecycle hooks (`beforeAll` / `afterEach` / `afterAll`) exactly as specified in the skill
+- Use only the pre-defined happy-path handlers from the skill's API reference (Section 2) as the default `setupServer(...)` call; add only the handlers relevant to the component under test
+- Override handlers per-test with `server.use()` using the error patterns from Section 3
+- Mock Supabase auth via `vi.mock(...)` (Section 6), not via MSW handlers
+- Mock `next/navigation` via `vi.mock(...)` (Section 7), not `next/router`
+
+Before writing any test file that involves API calls, read `.claude/skills/msw-mock/SKILL.md` in full.
+
 ### React Component Tests
 ```tsx
 // Pattern: Arrange → Act → Assert
