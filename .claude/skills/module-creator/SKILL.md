@@ -1,26 +1,19 @@
 ---
 name: route-file-creator
-description: >
-  Create Next.js App Router file structures from a route path and type (public/protected/admin).
-  Use when adding new pages, dynamic routes, or route groups to the Next.js app/ directory.
-user-invocable: true
+description: Create Next.js App Router file structures from a route path and page type (public/protected/admin). Triggers include '新建路由', '创建页面', '搭一个页面', '脚手架', 'add a new page', 'scaffold route', 'create app router page', or any request to add files under src/app/. Handles public/protected/admin page types, dynamic segments ([param]), and route groups ((name)). Do NOT use for editing existing page files, for API route handlers outside of App Router conventions, or for non-Next.js projects.
 ---
-
-Before doing anything, say "✅ Loaded: module-creator"
 
 # Skill: Route File Creator
 
 Create Next.js App Router file structures from a route path.
 
----
 ## Announce on activation
 
 At the start of the first response after this skill is loaded, state one line:
 
-> 📘 Using skill `module-creator`.
+> 📘 Using skill `route-file-creator`.
 
 Do this once per session, not on every turn. If the skill has already been announced earlier in the conversation, skip the announcement on subsequent turns.
-
 
 ## Input Format
 
@@ -61,6 +54,7 @@ No other folder types (catch-all, parallel, intercepting) unless explicitly requ
 **Never** place `route.ts` and `page.tsx` in the same folder.
 
 **Critical:** `"use client"` must be the very first line in `error.tsx`. No comments, no blank lines before it.
+
 ---
 
 ## Templates

@@ -1,6 +1,7 @@
-------
-
-## name: add-feature-through-knowledge description: "Use this skill whenever the user asks to add a new feature, implement an issue, build a page/component, write tests for a feature, or make any non-trivial change to the Comicly frontend. Triggers include: '实现 #N', 'add feature', 'build the X page', 'implement Y', 'write tests for Z', '做一下 xxx', or any request that touches src/frontend/ or src/app/ page files. This skill tells Claude Code which project knowledge documents under docs/ to consult for the specific task — not all of them, only the ones the task actually needs. Do NOT use for: trivial edits (typo fixes, renaming a single variable), backend-only work under src/backend/ or src/app/api/, or questions that are purely conceptual and don't modify code."
+---
+name: add-feature-through-knowledge
+description: Use this skill whenever the user asks to add a new feature, implement an issue, build a page/component, write tests for a feature, or make any non-trivial change to the Comicly frontend. Triggers include '实现 #N', '做一下', '搭建', '加一个', 'add feature', 'build the X page', 'implement Y', 'write tests for Z', or any request that touches src/frontend/ or src/app/ page files. Tells Claude Code which project knowledge documents under docs/separate-docs/ and docs/instructions/ to consult for the specific task — not all of them, only the ones the task actually needs. Do NOT use for trivial edits (typo fixes, renaming a single variable), backend-only work under src/backend/ or src/app/api/, or questions that are purely conceptual and don't modify code.
+---
 
 # Add Feature Through Knowledge
 
@@ -11,7 +12,6 @@ At the start of the first response after this skill is loaded, state one line:
 > 📘 Using skill `add-feature-through-knowledge`. Reading: [list the docs you are about to open].
 
 Do this once per session, not on every turn. If the skill has already been announced earlier in the conversation, skip the announcement on subsequent turns.
-
 
 ## What this skill does
 
