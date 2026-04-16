@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -ExecutionPolicy Bypass -NoProfile -Command \"[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; & '$CLAUDE_PROJECT_DIR/.claude/hooks/file-blocker.ps1'\"",
+            "command": "powershell -ExecutionPolicy Bypass -NoProfile -File .claude/hooks/run-pre.ps1",
             "timeout": 15
           }
         ]
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/frontend-lint.mjs\"",
+            "command": "node .claude/hooks/run-lint.mjs",
             "timeout": 45,
             "statusMessage": "Running ESLint & tsc..."
           }
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -ExecutionPolicy Bypass -NoProfile -Command \"[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; & '$CLAUDE_PROJECT_DIR/.claude/hooks/gitleaks-scan.ps1'\"",
+            "command": "powershell -ExecutionPolicy Bypass -NoProfile -File .claude/hooks/run-stop.ps1",
             "timeout": 60,
             "statusMessage": "Scanning for secrets with Gitleaks..."
           }
