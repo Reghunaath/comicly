@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getComic, refineComic } from "@/frontend/lib/api";
@@ -81,12 +82,12 @@ export default function QAPage({ comicId }: { comicId: string }) {
             Couldn&apos;t load your comic
           </p>
           <p className="mb-6 text-sm text-error">{fetchError}</p>
-          <a
+          <Link
             href="/"
             className="inline-block rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-text-inverse transition-colors hover:bg-primary-hover"
           >
             Go back
-          </a>
+          </Link>
         </div>
       </main>
     );
