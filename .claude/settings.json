@@ -1,0 +1,42 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Write|Edit|MultiEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -NoProfile -File .claude/hooks/run-pre.ps1",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/run-lint.mjs",
+            "timeout": 45,
+            "statusMessage": "Running ESLint & tsc..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -NoProfile -File .claude/hooks/run-stop.ps1",
+            "timeout": 60,
+            "statusMessage": "Scanning for secrets with Gitleaks..."
+          }
+        ]
+      }
+    ]
+  },
+  "autoMemoryEnabled": true
+}

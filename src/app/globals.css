@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/* -------------------------------------------------------------------------
+   Option A — "Ink & Pop"
+   Raw values live in :root so they can be overridden per theme later.
+   Tailwind utilities (bg-primary, text-text-secondary, etc.) are generated
+   by the --color-* mappings in @theme inline below.
+   ------------------------------------------------------------------------- */
+
+:root {
+  /* Base */
+  --background: #fafaf9;
+  --foreground: #1a1a1a;
+
+  /* Brand */
+  --primary: #6c3ce1;
+  --primary-hover: #5a2dc7;
+  --primary-light: #ede7fb;
+  --secondary: #ff6b35;
+  --secondary-hover: #e85a27;
+
+  /* Surfaces */
+  --surface: #ffffff;
+  --surface-alt: #f5f3f0;
+
+  /* Borders */
+  --border: #e2dfd9;
+  --border-focus: #6c3ce1;
+
+  /* Text */
+  --text: #1a1a1a;
+  --text-secondary: #6b6560;
+  --text-inverse: #ffffff;
+
+  /* Status — success */
+  --success: #16a34a;
+  --success-light: #dcfce7;
+
+  /* Status — warning */
+  --warning: #d97706;
+  --warning-light: #fef3c7;
+
+  /* Status — error */
+  --error: #dc2626;
+  --error-light: #fee2e2;
+
+  /* Status — muted / disabled */
+  --muted: #a8a29e;
+  --muted-light: #f0efed;
+}
+
+@theme inline {
+  /* Base */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  /* Brand */
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-light: var(--primary-light);
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+
+  /* Surfaces */
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+
+  /* Borders */
+  --color-border: var(--border);
+  --color-border-focus: var(--border-focus);
+
+  /* Text */
+  --color-text: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-inverse: var(--text-inverse);
+
+  /* Status */
+  --color-success: var(--success);
+  --color-success-light: var(--success-light);
+  --color-warning: var(--warning);
+  --color-warning-light: var(--warning-light);
+  --color-error: var(--error);
+  --color-error-light: var(--error-light);
+  --color-muted: var(--muted);
+  --color-muted-light: var(--muted-light);
+
+  /* Fonts */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
