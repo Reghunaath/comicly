@@ -2,11 +2,11 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Read|Write|Edit|MultiEdit|Bash",
+        "matcher": "Write|Edit|MultiEdit|Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -ExecutionPolicy Bypass -NoProfile -File .claude/hooks/run-pre.ps1",
+            "command": "powershell -ExecutionPolicy Bypass -NoProfile -Command \"$L=\\\"$env:USERPROFILE\\.claude\\hooks.log\\\"; $T=(Get-Date -F 'yyyy-MM-dd HH:mm:ss'); Add-Content $L \\\"[$T] PreToolUse START\\\"; & .claude/hooks/run-pre.ps1; $c=$LASTEXITCODE; $T2=(Get-Date -F 'yyyy-MM-dd HH:mm:ss'); Add-Content $L \\\"[$T2] PreToolUse END exit=$c\\\"; exit $c\"",
             "timeout": 15
           }
         ]
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/run-lint.mjs",
+            "command": "powershell -ExecutionPolicy Bypass -NoProfile -Command \"$L=\\\"$env:USERPROFILE\\.claude\\hooks.log\\\"; $T=(Get-Date -F 'yyyy-MM-dd HH:mm:ss'); Add-Content $L \\\"[$T] PostToolUse(lint) START\\\"; node .claude/hooks/run-lint.mjs; $c=$LASTEXITCODE; $T2=(Get-Date -F 'yyyy-MM-dd HH:mm:ss'); Add-Content $L \\\"[$T2] PostToolUse(lint) END exit=$c\\\"; exit $c\"",
             "timeout": 45,
             "statusMessage": "Running ESLint & tsc..."
           }
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -ExecutionPolicy Bypass -NoProfile -File .claude/hooks/run-stop.ps1",
+            "command": "powershell -ExecutionPolicy Bypass -NoProfile -Command \"$L=\\\"$env:USERPROFILE\\.claude\\hooks.log\\\"; $T=(Get-Date -F 'yyyy-MM-dd HH:mm:ss'); Add-Content $L \\\"[$T] Stop(gitleaks) START\\\"; & .claude/hooks/run-stop.ps1; $c=$LASTEXITCODE; $T2=(Get-Date -F 'yyyy-MM-dd HH:mm:ss'); Add-Content $L \\\"[$T2] Stop(gitleaks) END exit=$c\\\"; exit $c\"",
             "timeout": 60,
             "statusMessage": "Scanning for secrets with Gitleaks..."
           }

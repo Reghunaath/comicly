@@ -5,7 +5,7 @@
  * .env.local to use mock responses while Reghu's backend is in progress.
  */
 
-import type { ArtStylePreset, Comic, Script } from "./types";
+import type { ArtStylePreset, Comic, GenerationMode, Script } from "./types";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_API === "true";
 
@@ -96,17 +96,37 @@ export async function generateScript(id: string): Promise<{ script: Script }> {
   return res.json();
 }
 
-export async function approveScript(id: string): Promise<void> {
+export async function approveScript(
+  id: string,
+  generationMode: GenerationMode,
+  script: Script
+): Promise<void> {
   if (USE_MOCK) {
+    void generationMode;
+    void script;
     await delay(400);
     return;
   }
   const res = await fetch(`/api/comic/${id}/approve`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ generationMode: "automated" }),
+    body: JSON.stringify({ generationMode, script }),
   });
   if (!res.ok) throw new Error("Failed to approve script");
+}
+
+export async function regenerateScript(
+  id: string,
+  feedback: string
+): Promise<{ script: Script }> {
+  if (USE_MOCK) return mockRegenerateScript(feedback);
+  const res = await fetch(`/api/comic/${id}/script/regenerate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ feedback }),
+  });
+  if (!res.ok) throw new Error("Failed to regenerate script");
+  return res.json();
 }
 
 export async function generateAllPages(id: string): Promise<void> {
@@ -335,6 +355,17 @@ async function mockRegeneratePage(
   const versions = [...existing, newVersion];
   _mockPageVersions.set(key, versions);
   return { page: { pageNumber, versions, selectedVersionIndex: versions.length - 1 } };
+async function mockRegenerateScript(feedback: string): Promise<{ script: Script }> {
+  void feedback;
+  await delay(1200);
+  const { script } = await mockGenerateScript("mock");
+  return {
+    script: {
+      ...script,
+      title: script.title + " (Revised)",
+      synopsis: "[Revised] " + script.synopsis,
+    },
+  };
 }
 
 function delay(ms: number) {
