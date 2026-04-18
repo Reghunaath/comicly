@@ -165,12 +165,24 @@ export async function getComic(id: string): Promise<Comic | null> {
   return mapDbToComic(comic as DbComic, pages as DbComicPage[] | null);
 }
 
-export async function saveComic(
+export async function insertComic(
   comic: Partial<Comic> & { id: string }
 ): Promise<void> {
   const { error } = await supabaseAdmin
     .from("comics")
-    .upsert(mapComicToDb(comic));
+    .insert(mapComicToDb(comic));
+
+  if (error) throw error;
+}
+
+export async function saveComic(
+  comic: Partial<Comic> & { id: string }
+): Promise<void> {
+  const { id, ...rest } = mapComicToDb(comic);
+  const { error } = await supabaseAdmin
+    .from("comics")
+    .update(rest)
+    .eq("id", id);
 
   if (error) throw error;
 }

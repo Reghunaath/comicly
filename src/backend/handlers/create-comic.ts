@@ -2,7 +2,7 @@ import type { ArtStylePreset, FollowUpQuestion } from "@/backend/lib/types";
 import { MIN_PAGES, MAX_PAGES } from "@/backend/lib/constants";
 import { getOptionalUser } from "@/backend/lib/supabase/middleware";
 import { generateFollowUpQuestions } from "@/backend/lib/ai/script-generator";
-import { saveComic } from "@/backend/lib/db";
+import { insertComic } from "@/backend/lib/db";
 
 const VALID_ART_STYLES: ArtStylePreset[] = [
   "manga",
@@ -78,7 +78,7 @@ export async function createComic(body: unknown): Promise<CreateComicResult> {
 
   const comicId = crypto.randomUUID();
 
-  await saveComic({
+  await insertComic({
     id: comicId,
     userId: user?.id ?? null,
     status: "input",
