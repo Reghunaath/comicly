@@ -116,6 +116,61 @@ export async function generateAllPages(id: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Supervised Mode endpoints (#20)
+// ---------------------------------------------------------------------------
+
+export async function generatePage(
+  id: string,
+  pageNumber: number
+): Promise<{ page: import("./types").Page }> {
+  if (USE_MOCK) return mockGeneratePage(id, pageNumber);
+  const res = await fetch(`/api/comic/${id}/page/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pageNumber }),
+  });
+  if (!res.ok) {
+    const { error } = await res.json().catch(() => ({ error: "Unknown error" }));
+    throw new Error(error ?? "Failed to generate page");
+  }
+  return res.json();
+}
+
+export async function regeneratePage(
+  id: string,
+  pageNumber: number
+): Promise<{ page: import("./types").Page }> {
+  if (USE_MOCK) return mockRegeneratePage(id, pageNumber);
+  const res = await fetch(`/api/comic/${id}/page/regenerate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pageNumber }),
+  });
+  if (!res.ok) {
+    const { error } = await res.json().catch(() => ({ error: "Unknown error" }));
+    throw new Error(error ?? "Failed to regenerate page");
+  }
+  return res.json();
+}
+
+export async function selectPageVersion(
+  id: string,
+  pageNumber: number,
+  versionIndex: number
+): Promise<void> {
+  if (USE_MOCK) {
+    await delay(300);
+    return;
+  }
+  const res = await fetch(`/api/comic/${id}/page/select`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pageNumber, versionIndex }),
+  });
+  if (!res.ok) throw new Error("Failed to select page version");
+}
+
+// ---------------------------------------------------------------------------
 // Mock implementations (dev-only)
 // ---------------------------------------------------------------------------
 
@@ -241,6 +296,45 @@ async function mockGenerateScript(id: string): Promise<{ script: Script }> {
 async function mockGenerateAllPages(id: string): Promise<void> {
   await delay(1000);
   _mockCompletedComics.add(id);
+}
+
+// Tracks mock page versions: key = `${id}-p${pageNumber}`
+const _mockPageVersions = new Map<string, import("./types").PageVersion[]>();
+
+async function mockGeneratePage(
+  id: string,
+  pageNumber: number
+): Promise<{ page: import("./types").Page }> {
+  await delay(1200);
+  const key = `${id}-p${pageNumber}`;
+  const versions: import("./types").PageVersion[] = [
+    {
+      imageUrl: `https://picsum.photos/seed/${key}-v0/800/1200`,
+      generatedAt: new Date().toISOString(),
+    },
+  ];
+  _mockPageVersions.set(key, versions);
+  return { page: { pageNumber, versions, selectedVersionIndex: 0 } };
+}
+
+async function mockRegeneratePage(
+  id: string,
+  pageNumber: number
+): Promise<{ page: import("./types").Page }> {
+  await delay(1200);
+  const key = `${id}-p${pageNumber}`;
+  const existing = _mockPageVersions.get(key) ?? [];
+  if (existing.length >= 4) {
+    throw new Error("Maximum regeneration limit (3) reached for this page.");
+  }
+  const next = existing.length;
+  const newVersion: import("./types").PageVersion = {
+    imageUrl: `https://picsum.photos/seed/${key}-v${next}/800/1200`,
+    generatedAt: new Date().toISOString(),
+  };
+  const versions = [...existing, newVersion];
+  _mockPageVersions.set(key, versions);
+  return { page: { pageNumber, versions, selectedVersionIndex: versions.length - 1 } };
 }
 
 function delay(ms: number) {
