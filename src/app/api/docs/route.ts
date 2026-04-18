@@ -64,6 +64,90 @@ const spec = {
         },
       },
     },
+    "/api/comic/{id}": {
+      get: {
+        summary: "Get comic",
+        description: "Returns the full comic object. No auth required.",
+        tags: ["Comic"],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+        responses: {
+          "200": { description: "Comic object", content: { "application/json": { schema: { type: "object", properties: { comic: { type: "object" } } } } } },
+          "404": { description: "Comic not found" },
+          "500": { description: "Internal server error" },
+        },
+      },
+    },
+    "/api/comic/{id}/refine": {
+      post: {
+        summary: "Submit follow-up answers",
+        description: "Stores answers and transitions status to script_pending",
+        tags: ["Comic"],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["answers"],
+                properties: {
+                  answers: { type: "object", additionalProperties: { type: "string" }, example: { q1: "Inspector Whiskers", q3: "A stolen diamond" } },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Answers stored", content: { "application/json": { schema: { type: "object", properties: { success: { type: "boolean" } } } } } },
+          "400": { description: "Validation or status error" },
+          "404": { description: "Comic not found" },
+          "500": { description: "Internal server error" },
+        },
+      },
+    },
+    "/api/comic/{id}/script/generate": {
+      post: {
+        summary: "Generate script",
+        description: "Generates full comic script via Gemini. Transitions status to script_draft.",
+        tags: ["Script"],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+        responses: {
+          "200": { description: "Script generated", content: { "application/json": { schema: { type: "object", properties: { script: { type: "object" } } } } } },
+          "400": { description: "Status error" },
+          "404": { description: "Comic not found" },
+          "500": { description: "Internal server error" },
+        },
+      },
+    },
+    "/api/comic/{id}/approve": {
+      put: {
+        summary: "Approve script",
+        description: "Validates and stores the approved script and generation mode. Transitions status to script_approved.",
+        tags: ["Script"],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["script", "generationMode"],
+                properties: {
+                  script: { type: "object" },
+                  generationMode: { type: "string", enum: ["supervised", "automated"] },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Script approved", content: { "application/json": { schema: { type: "object", properties: { success: { type: "boolean" } } } } } },
+          "400": { description: "Validation or status error" },
+          "404": { description: "Comic not found" },
+          "500": { description: "Internal server error" },
+        },
+      },
+    },
     "/api/comic/random-idea": {
       get: {
         summary: "Generate random idea",

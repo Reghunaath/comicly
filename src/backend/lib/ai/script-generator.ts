@@ -36,7 +36,7 @@ async function parseJsonWithRetry<T>(
   }
 }
 
-function validateScript(script: Script, expectedPageCount: number): void {
+export function validateScript(script: Script, expectedPageCount: number): void {
   if (!script.title || typeof script.title !== "string") {
     throw new Error("Script missing title");
   }
