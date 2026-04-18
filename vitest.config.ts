@@ -15,6 +15,7 @@ export default defineConfig({
         "src/frontend/qa/**",
         "src/frontend/script-review/**",
         "src/frontend/comic-viewer/**",
+        "src/frontend/auth/**",
       ],
       thresholds: {
         lines: 70,

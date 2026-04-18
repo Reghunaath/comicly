@@ -1,0 +1,785 @@
+ ▐▛███▜▌   Claude Code v2.1.111
+▝▜█████▛▘  Sonnet 4.6 · Claude Enterprise
+  ▘▘ ▝▝    D:\files\coding\portfolio\comicly
+
+❯ /clear                                                                        
+  ⎿  (no content)
+
+❯ Prepare to implement #17 auth page @docs/separate-docs/responsibility.md .    
+  You may need /module-creator for new files. You may also need                 
+  /add-feature-through-knowledge to get more information. Plan before you       
+  start. For auth part, you should use TDD pattern, which means your plan       
+  should include red-green-refactor pattern. Plan before you start              
+  ⎿  Read docs\separate-docs\responsibility.md (95 lines)
+
+● Let me read the memory files and explore the codebase before planning.
+
+  Recalled 2 memories (ctrl+o to expand)
+
+● Explore(Explore comicly codebase structure)
+  ⎿  Done (35 tool uses · 66.2k tokens · 1m 47s)
+  (ctrl+o to expand)
+
+● Now let me look at an existing test file and an existing page component to
+  understand exact patterns.
+
+  Read 2 files (ctrl+o to expand)
+
+● Now I have everything I need. Let me present the full TDD implementation plan.
+
+  ---
+  Plan: Issue #17 — Auth Pages (/auth/login, /auth/signup, /auth/callback)
+
+  Files to create / modify
+
+  ┌────────┬─────────────────────────────────────────────────────────────────┐
+  │ Action │                              Path                               │
+  ├────────┼─────────────────────────────────────────────────────────────────┤
+  │ Create │ src/frontend/lib/supabase-browser.ts                            │
+  ├────────┼─────────────────────────────────────────────────────────────────┤
+  │ Create │ src/frontend/auth/__tests__/LoginPage.test.tsx                  │
+  ├────────┼─────────────────────────────────────────────────────────────────┤
+  │ Create │ src/frontend/auth/__tests__/SignupPage.test.tsx                 │
+  ├────────┼─────────────────────────────────────────────────────────────────┤
+  │ Create │ src/frontend/auth/LoginPage.tsx                                 │
+  ├────────┼─────────────────────────────────────────────────────────────────┤
+  │ Create │ src/frontend/auth/SignupPage.tsx                                │
+  ├────────┼─────────────────────────────────────────────────────────────────┤
+  │ Create │ src/app/auth/login/page.tsx                                     │
+  ├────────┼─────────────────────────────────────────────────────────────────┤
+  │ Create │ src/app/auth/signup/page.tsx                                    │
+  ├────────┼─────────────────────────────────────────────────────────────────┤
+  │ Create │ src/app/auth/callback/route.ts                                  │
+  ├────────┼─────────────────────────────────────────────────────────────────┤
+  │ Modify │ vitest.config.ts — add src/frontend/auth/** to coverage         │
+  │        │ includes                                                        │
+  └────────┴─────────────────────────────────────────────────────────────────┘
+
+  ---
+  TDD Cycle
+
+  RED — Write tests first (all fail, no implementation exists)
+
+  LoginPage.test.tsx — test groups:
+  1. Rendering — email field, password field, "Log In" button, "Continue with
+  Google" OAuth button, link to /auth/signup
+  2. Validation — empty email → error; invalid email format → error; empty
+  password → error (client-side, no network call)
+  3. Submit: success — calls supabase.auth.signInWithPassword with correct
+  credentials; redirects to ?redirect= value (default /)
+  4. Submit: error — shows Supabase error message (e.g., "Invalid login
+  credentials"); button re-enables
+  5. Loading state — button disabled + shows "Signing in…" during in-flight
+  request
+  6. Redirect param — when ?redirect=/library is in URL, post-login push goes to
+   /library
+
+  SignupPage.test.tsx — test groups:
+  1. Rendering — email field, password field, "Sign Up" button, "Continue with
+  Google" button, link to /auth/login
+  2. Validation — empty email → error; invalid email format → error; empty
+  password → error; password < 6 chars → "Password must be at least 6
+  characters"
+  3. Submit: success — calls supabase.auth.signUp; shows "Check your email to
+  confirm your account" (Supabase email confirmation flow — no redirect yet)
+  4. Submit: error — shows Supabase error message; button re-enables
+  5. Loading state — button disabled + "Creating account…" while in-flight
+  6. OAuth — clicking "Continue with Google" calls
+  supabase.auth.signInWithOAuth({ provider: 'google' })
+
+  Mock strategy: vi.mock("@/frontend/lib/supabase-browser") returns a mock
+  client object with auth.signInWithPassword, auth.signUp, auth.signInWithOAuth
+  as vi.fn(). No MSW needed (Supabase SDK calls are not fetch-interceptable the
+  same way).
+
+  ---
+  GREEN — Implement to make tests pass
+
+  supabase-browser.ts
+  createBrowserClient(NEXT_PUBLIC_SUPABASE_URL,
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)
+  Exported as a singleton supabase instance.
+
+  LoginPage.tsx
+  - "use client", useRouter, useSearchParams
+  - Form state: email, password, error, loading
+  - Client-side validation before calling Supabase
+  - On success: router.push(redirect ?? "/")
+  - OAuth button: supabase.auth.signInWithOAuth({ provider: "google", options: {
+   redirectTo: \${NEXT_PUBLIC_BASE_URL}/auth/callback?redirect=${redirect}` }
+  })`
+
+  SignupPage.tsx
+  - Same structure; shows success banner instead of redirecting (email
+  confirmation required)
+
+  app/auth/login/page.tsx and app/auth/signup/page.tsx
+  - Thin wrappers that import and render the client components (same pattern as
+  all other pages in this codebase)
+
+  app/auth/callback/route.ts
+  - GET handler using @supabase/ssr server client + next/headers cookies
+  - Exchanges ?code= for a session via
+  supabase.auth.exchangeCodeForSession(code)
+  - Redirects to ?redirect= param (or /)
+
+  ---
+  REFACTOR — after tests are green
+
+  - If LoginPage and SignupPage share ≥3 identical JSX blocks (e.g., email field
+   + error span + OAuth button), extract a shared AuthFormField or OAuthButton
+  component into src/frontend/auth/
+  - No premature abstraction — only extract if the duplication is clear after
+  both components exist
+
+  ---
+  Constraints to respect
+
+  - No MSW needed for auth tests — mock the Supabase module directly with
+  vi.mock
+  - ?redirect= param must be URL-safe validated (only allow relative paths
+  starting with / to prevent open-redirect)
+  - Callback route is not under src/app/api/ so it's in Qingyang's scope despite
+   being a Route Handler
+  - Coverage: add src/frontend/auth/** to vitest.config.ts includes so auth
+  counts toward the >70% threshold
+
+  ---
+  Ready to start? I'll begin with the RED phase — writing both test files first
+  — then proceed to GREEN and REFACTOR. Should I go ahead?
+
+✻ Cogitated for 2m 55s
+
+❯ Please continue. Implement RED phase only for now. I'll ask for further steps 
+   later                                                                        
+
+● Let me read the full landing page test and the vitest config to match patterns
+   exactly.
+
+  Read 2 files (ctrl+o to expand)
+
+● Now I have everything I need. Writing 3 files: LoginPage.test.tsx,
+  SignupPage.test.tsx, and updating vitest.config.ts.
+
+● Write(src\frontend\auth\__tests__\LoginPage.test.tsx)
+  ⎿  Wrote 271 lines to src\frontend\auth\__tests__\LoginPage.test.tsx
+       2 import userEvent from "@testing-library/user-event";ct";
+       3 import { beforeEach, describe, expect, it, vi } from "vitest";
+       5 import LoginPage from "../LoginPage";
+       6 // -------------------------------------------------------------
+         --------------
+         ck factorye mock — vi.hoisted so refs are available inside vi.mo
+       8 // -------------------------------------------------------------
+       9 --------------
+      10 const { mockSignInWithPassword, mockSignInWithOAuth } = vi.hoist
+         ed(() => ({
+     … +306 lines (ctrl+o to expand)
+
+● Write(src\frontend\auth\__tests__\SignupPage.test.tsx)
+  ⎿  Wrote 256 lines to src\frontend\auth\__tests__\SignupPage.test.tsx
+       2 import userEvent from "@testing-library/user-event";ct";
+       3 import { beforeEach, describe, expect, it, vi } from "vitest";
+       4 import SignupPage from "../SignupPage";
+       6 // -------------------------------------------------------------
+         --------------
+       7 // Supabase mock — vi.hoisted so refs are available inside vi.mo
+       8 // -------------------------------------------------------------
+         --------------
+       9 
+      10 const { mockSignUp, mockSignInWithOAuth } = vi.hoisted(() => ({
+     … +294 lines (ctrl+o to expand)
+
+● Now update vitest.config.ts to include auth in coverage.
+
+● Update(vitest.config.ts)
+  ⎿  Added 1 line
+      15          "src/frontend/qa/**",
+      16          "src/frontend/script-review/**",
+      17          "src/frontend/comic-viewer/**",
+      18 +        "src/frontend/auth/**",                                
+      19        ],
+      20        thresholds: {
+      21          lines: 70,
+
+● Now let's confirm the tests are RED by running them.
+
+● Bash(cd "D:\files\coding\portfolio\comicly" && npm test -- --reporter=verbose
+      2>&1 | tail -60)
+  ⎿   ✓ src/frontend/qa/__tests__/QAPage.test.tsx > Error — 404 on fetch >
+     shows an error state when the comic is not found 10ms
+      ✓ src/frontend/qa/__tests__/QAPage.test.tsx > Error — 404 on fetch >
+     … +58 lines (ctrl+o to expand)
+  ⎿  (timeout 1m)
+
+● RED phase confirmed. Both new test suites fail as expected — LoginPage and
+  SignupPage don't exist yet. All 74 existing tests still pass.
+
+  Summary of RED phase:
+
+  ┌─────────────────────────────────────────────────┬────────────────────────┐
+  │                      File                       │         Status         │
+  ├─────────────────────────────────────────────────┼────────────────────────┤
+  │ src/frontend/auth/__tests__/LoginPage.test.tsx  │ 16 tests, failing      │
+  │                                                 │ (module not found)     │
+  ├─────────────────────────────────────────────────┼────────────────────────┤
+  │ src/frontend/auth/__tests__/SignupPage.test.tsx │ 16 tests, failing      │
+  │                                                 │ (module not found)     │
+  ├─────────────────────────────────────────────────┼────────────────────────┤
+  │                                                 │ Updated —              │
+  │ vitest.config.ts                                │ src/frontend/auth/**   │
+  │                                                 │ added to coverage      │
+  │                                                 │ includes               │
+  └─────────────────────────────────────────────────┴────────────────────────┘
+
+  The tests cover:
+  - Rendering (5 each) — inputs, buttons, cross-page links
+  - Validation (3 login / 4 signup) — empty fields, bad email format, short
+  password
+  - Loading state (1 each) — button disabled with in-flight label
+  - Successful submit (4 login / 2 signup) — correct Supabase call, redirect
+  logic, open-redirect guard
+  - Error handling (2 each) — error message display, button re-enable
+  - OAuth (1 each) — Google provider called
+
+  Ready for the GREEN phase when you are.
+
+✻ Brewed for 3m 37s
+
+❯ Continue with GREEN phase. You can use either mock or real connections. Real  
+  keys are now configured in .env.local                                         
+
+● Let me check the .env.local file and the Supabase SSR API before implementing.
+
+● Bash(cd "D:\files\coding\portfolio\comicly" && cat .env.local 2>/dev/null |
+      grep -v SERVICE_ROLE | grep -v GEMINI)  ⎿  PreToolUse:Bash hook returned blocking error  ⎿  Bash command references .env.local, which is blocked by project hook
+  ⎿  Error: Bash command references .env.local, which is blocked by project hook
+
+● Bash(cd "D:\files\coding\portfolio\comicly" && node -e "const pkg =
+      require('./node_modules/@supabase/ssr/package.json');
+      console.log(pkg.version);" && node -e "cons…)
+  ⎿  Cancelled: parallel tool call Bash(cd "D:\files\coding\portfolio\comicly" 
+     &…) errored
+
+● Bash(cd "D:\files\coding\portfolio\comicly" && node -e "const pkg =
+      require('./node_modules/@supabase/ssr/package.json');
+      console.log(pkg.version);")
+  ⎿  0.10.2
+
+  Read 1 file (ctrl+o to expand)
+
+● Good. Now let me check the @supabase/ssr exports to use the right API.
+
+● Bash(cd "D:\files\coding\portfolio\comicly" && node -e "const s =
+      require('@supabase/ssr'); console.log(Object.keys(s));")
+  ⎿  [
+       'createBrowserClient',
+       'createServerClient',
+     … +18 lines (ctrl+o to expand)
+
+● Good — createBrowserClient and createServerClient both available. Writing all
+  6 implementation files now.
+
+● Write(src\frontend\lib\supabase-browser.ts)
+  ⎿  Wrote 6 lines to src\frontend\lib\supabase-browser.ts
+      1 import { createBrowserClient } from "@supabase/ssr";
+      2 
+      3 export const supabase = createBrowserClient(
+      4   process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      5   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+      6 );
+
+● Write(src\frontend\auth\LoginPage.tsx)
+  ⎿  Wrote 166 lines to src\frontend\auth\LoginPage.tsx
+       2 "use client";
+       3 import Link from "next/link";
+       4 import { useRouter, useSearchParams } from "next/navigation";
+       5 import { useState } from "react";
+       6 import { supabase } from "@/frontend/lib/supabase-browser";
+       7 
+       8 function safeRedirect(value: string | null): string {
+       9   if (!value || !value.startsWith("/") || value.startsWith("//")
+         ) return "/";
+      10   return value;
+     … +172 lines (ctrl+o to expand)
+
+● Write(src\frontend\auth\SignupPage.tsx)
+  ⎿  Wrote 197 lines to src\frontend\auth\SignupPage.tsx
+       2 "use client";
+       3 import Link from "next/link";
+       4 import { useRouter, useSearchParams } from "next/navigation";
+       5 import { useState } from "react";
+       6 import { supabase } from "@/frontend/lib/supabase-browser";
+       7 
+       8 function safeRedirect(value: string | null): string {
+       9   if (!value || !value.startsWith("/") || value.startsWith("//")
+         ) return "/";
+      10   return value;
+     … +206 lines (ctrl+o to expand)
+
+● I left void router noise in SignupPage — router isn't used there since signup
+  shows a confirmation instead of redirecting. Let me fix that.
+
+● Update(src\frontend\auth\SignupPage.tsx)
+  ⎿  Removed 1 line
+      11  }
+      12  
+      13  export default function SignupPage() {
+      14 -  const router = useRouter();                                  
+      14    const searchParams = useSearchParams();
+      15    const redirect = safeRedirect(searchParams.get("redirect"));
+      16  
+
+● Update(src\frontend\auth\SignupPage.tsx)
+  ⎿  Added 1 line, removed 1 line
+      1  "use client";
+      2  
+      3  import Link from "next/link";
+      4 -import { useRouter, useSearchParams } from "next/navigation";   
+      4 +import { useSearchParams } from "next/navigation";              
+      5  import { useState } from "react";
+      6  import { supabase } from "@/frontend/lib/supabase-browser";
+      7  
+
+● Update(src\frontend\auth\SignupPage.tsx)
+  ⎿  Removed 3 lines
+      24    const [loading, setLoading] = useState(false);
+      25    const [showConfirmation, setShowConfirmation] = useState(fals
+          e);
+      26  
+      27 -  void router;                                                 
+      28 -  void redirect;                                               
+      29 -                                                               
+      27    function validate() {
+      28      const errors: { email?: string; password?: string } = {};
+      29      if (!email) {
+
+● Now the three remaining files — app route wrappers and the callback handler.
+
+● Write(src\app\auth\login\page.tsx)
+  ⎿  Wrote 5 lines to src\app\auth\login\page.tsx
+      1 import LoginPage from "@/frontend/auth/LoginPage";
+      2 
+      3 export default function Page() {
+      4   return <LoginPage />;
+      5 }
+
+● Write(src\app\auth\signup\page.tsx)
+  ⎿  Wrote 5 lines to src\app\auth\signup\page.tsx
+      1 import SignupPage from "@/frontend/auth/SignupPage";
+      2 
+      3 export default function Page() {
+      4   return <SignupPage />;
+      5 }
+
+● Write(src\app\auth\callback\route.ts)
+  ⎿  Wrote 40 lines to src\app\auth\callback\route.ts
+       2 import { cookies } from "next/headers";pabase/ssr";
+       3 import { NextRequest, NextResponse } from "next/server";
+       4 
+       5 export async function GET(request: NextRequest) {
+       6   const { searchParams, origin } = new URL(request.url);
+       7   const code = searchParams.get("code");
+       8   const redirectParam = searchParams.get("redirect") ?? "/";
+       9   const safeTarget =
+      10     redirectParam.startsWith("/") && !redirectParam.startsWith("
+         //")
+     … +32 lines (ctrl+o to expand)
+
+● Now run the tests to see if they go GREEN.
+
+● Bash(cd "D:\files\coding\portfolio\comicly" && npm test -- --reporter=verbose
+      2>&1 | tail -80)
+  ⎿   ✓ src/frontend/landing/__tests__/LandingPage.test.tsx > Surprise Me >
+      clicking Surprise Me calls GET /api/comic/random-idea and populates t
+     he textarea 90ms
+     … +100 lines (ctrl+o to expand)
+  ⎿  (timeout 1m)
+
+● All 105 tests pass (74 pre-existing + 32 new auth tests). The act(...)
+  warnings on the loading-state tests are benign — they fire when resolve(...)
+  is called at the tail of the test, same pattern the existing landing page
+  tests use.
+
+  Let me do a quick lint check.
+● Bash(cd "D:\files\coding\portfolio\comicly" && npm run lint 2>&1 | tail -20)
+  ⎿  > comicly@0.1.0 lint
+     > eslint
+     … +22 lines (ctrl+o to expand)
+  ⎿  (timeout 30s)
+
+● Clean — no new errors from the auth files. The 1 error and 3 warnings are all
+  pre-existing (in QAPage.tsx, ComicViewerPage.test.tsx, and
+  LandingPage.test.tsx).
+
+  ---
+  GREEN phase complete. Here's what was created:
+
+  ┌──────────────────────────────────────┬───────────────────────────────────┐
+  │                 File                 │              Purpose              │
+  ├──────────────────────────────────────┼───────────────────────────────────┤
+  │ src/frontend/lib/supabase-browser.ts │ createBrowserClient singleton     │
+  ├──────────────────────────────────────┼───────────────────────────────────┤
+  │                                      │ Email/password form, OAuth        │
+  │ src/frontend/auth/LoginPage.tsx      │ button, redirect logic,           │
+  │                                      │ open-redirect guard               │
+  ├──────────────────────────────────────┼───────────────────────────────────┤
+  │                                      │ Sign-up form with 6-char password │
+  │ src/frontend/auth/SignupPage.tsx     │  validation, email confirmation   │
+  │                                      │ state                             │
+  ├──────────────────────────────────────┼───────────────────────────────────┤
+  │ src/app/auth/login/page.tsx          │ Route wrapper                     │
+  ├──────────────────────────────────────┼───────────────────────────────────┤
+  │ src/app/auth/signup/page.tsx         │ Route wrapper                     │
+  ├──────────────────────────────────────┼───────────────────────────────────┤
+  │ src/app/auth/callback/route.ts       │ OAuth code exchange via           │
+  │                                      │ createServerClient                │
+  └──────────────────────────────────────┴───────────────────────────────────┘
+
+  105/105 tests pass. Ready for the REFACTOR phase when you want to continue.
+
+✻ Crunched for 4m 56s
+
+※ recap: Implementing auth pages (issue #17). RED and GREEN phases are done — 105 tests pass. Next: REFACTOR phase to check for shared form logic between LoginPage and SignupPage. (disable recaps in /config)
+
+❯ Please continue with REFACTOR phase                                           
+
+● Let me read both components in full to find real duplication before extracting
+   anything.
+
+  Read 2 files (ctrl+o to expand)
+
+● Three things worth extracting — safeRedirect is duplicated and
+  security-sensitive, the field block (label + input + error) appears 4 times,
+  and the Google button + divider is identical in both files. Everything else
+  diverges enough to stay separate.
+
+  Plan: create src/frontend/lib/auth.ts, src/frontend/auth/AuthField.tsx,
+  src/frontend/auth/GoogleOAuthSection.tsx, then slim down both pages.
+
+● Write(src\frontend\lib\auth.ts)
+  ⎿  Wrote 4 lines to src\frontend\lib\auth.ts
+      1 export function safeRedirect(value: string | null): string {
+      2   if (!value || !value.startsWith("/") || value.startsWith("//"))
+         return "/";
+      3   return value;
+      4 }
+
+● Write(src\frontend\auth\AuthField.tsx)
+  ⎿  Wrote 42 lines to src\frontend\auth\AuthField.tsx
+       1 interface Props {
+       2   id: string;
+       3   label: string;
+       4   type?: "email" | "password" | "text";
+       5   autoComplete?: string;
+       6   value: string;
+       7   onChange: (value: string) => void;
+       8   error?: string;
+       9   className?: string;
+      10 }
+     … +34 lines (ctrl+o to expand)
+
+● Write(src\frontend\auth\GoogleOAuthSection.tsx)
+  ⎿  Wrote 22 lines to src\frontend\auth\GoogleOAuthSection.tsx
+       1 interface Props {
+       2   onClick: () => void;
+       3 }
+       4 
+       5 export default function GoogleOAuthSection({ onClick }: Props) {
+       6   return (
+       7     <>
+       8       <button
+       9         type="button"
+      10         onClick={onClick}
+     … +14 lines (ctrl+o to expand)
+
+● Now rewrite both pages to use the extracted pieces.
+
+● Write(src\frontend\auth\LoginPage.tsx)
+  ⎿  Added 24 lines, removed 65 lines
+       4  import { useRouter, useSearchParams } from "next/navigation";
+       5  import { useState } from "react";
+       6  import { supabase } from "@/frontend/lib/supabase-browser";
+       7 +import { safeRedirect } from "@/frontend/lib/auth";            
+       8 +import AuthField from "./AuthField";                           
+       9 +import GoogleOAuthSection from "./GoogleOAuthSection";         
+      10  
+       8 -function safeRedirect(value: string | null): string {          
+       9 -  if (!value || !value.startsWith("/") || value.startsWith("//"
+         -)) return "/";                                                 
+      10 -  return value;                                                
+      11 -}                                                              
+      12 -                                                               
+      11  export default function LoginPage() {
+      12    const router = useRouter();
+      13    const searchParams = useSearchParams();
+     ...
+       71        <div className="w-full max-w-sm">
+       72          <h1 className="mb-6 text-2xl font-bold text-text">Log 
+           in to Comicly</h1>
+       73  
+       76 -        <button                                               
+       77 -          type="button"                                       
+       78 -          onClick={handleOAuth}                               
+       79 -          className="mb-4 flex w-full items-center justify-cen
+          -ter gap-2 rounded-lg border border-border bg-surface py-2.5 te
+          -xt-sm font-medium text-text transition-colors hover:bg-surface
+          --alt"                                                         
+       80 -        >                                                     
+       81 -          Continue with Google                                
+       82 -        </button>                                             
+       74 +        <GoogleOAuthSection onClick={handleOAuth} />          
+       75  
+       84 -        <div className="mb-4 flex items-center gap-3">        
+       85 -          <hr className="flex-1 border-border" />             
+       86 -          <span className="text-xs text-text-secondary">or</sp
+          -an>                                                           
+       87 -          <hr className="flex-1 border-border" />             
+       88 -        </div>                                                
+       89 -                                                              
+       76          <form onSubmit={handleSubmit} noValidate>
+       91 -          <div className="mb-4">                              
+       92 -            <label                                            
+       93 -              htmlFor="email"                                 
+       94 -              className="mb-1 block text-sm font-medium text-t
+          -ext"                                                          
+       95 -            >                                                 
+       96 -              Email                                           
+       97 -            </label>                                          
+       98 -            <input                                            
+       99 -              id="email"                                      
+      100 -              type="email"                                    
+      101 -              autoComplete="email"                            
+      102 -              value={email}                                   
+      103 -              onChange={(e) => setEmail(e.target.value)}      
+      104 -              className={[                                    
+      105 -                "w-full rounded-lg border px-3 py-2 text-sm te
+          -xt-text outline-none transition-colors",                      
+      106 -                "focus:ring-2 focus:ring-border-focus",       
+      107 -                fieldErrors.email ? "border-error" : "border-b
+          -order",                                                       
+      108 -              ].join(" ")}                                    
+      109 -            />                                                
+      110 -            {fieldErrors.email && (                           
+      111 -              <p className="mt-1 text-xs text-error">{fieldErr
+          -ors.email}</p>                                                
+      112 -            )}                                                
+      113 -          </div>                                              
+       77 +          <AuthField                                          
+       78 +            id="email"                                        
+       79 +            label="Email"                                     
+       80 +            type="email"                                      
+       81 +            autoComplete="email"                              
+       82 +            value={email}                                     
+       83 +            onChange={setEmail}                               
+       84 +            error={fieldErrors.email}                         
+       85 +            className="mb-4"                                  
+       86 +          />                                                  
+       87 +          <AuthField                                          
+       88 +            id="password"                                     
+       89 +            label="Password"                                  
+       90 +            type="password"                                   
+       91 +            autoComplete="current-password"                   
+       92 +            value={password}                                  
+       93 +            onChange={setPassword}                            
+       94 +            error={fieldErrors.password}                      
+       95 +            className="mb-6"                                  
+       96 +          />                                                  
+       97  
+      115 -          <div className="mb-6">                              
+      116 -            <label                                            
+      117 -              htmlFor="password"                              
+      118 -              className="mb-1 block text-sm font-medium text-t
+          -ext"                                                          
+      119 -            >                                                 
+      120 -              Password                                        
+      121 -            </label>                                          
+      122 -            <input                                            
+      123 -              id="password"                                   
+      124 -              type="password"                                 
+      125 -              autoComplete="current-password"                 
+      126 -              value={password}                                
+      127 -              onChange={(e) => setPassword(e.target.value)}   
+      128 -              className={[                                    
+      129 -                "w-full rounded-lg border px-3 py-2 text-sm te
+          -xt-text outline-none transition-colors",                      
+      130 -                "focus:ring-2 focus:ring-border-focus",       
+      131 -                fieldErrors.password ? "border-error" : "borde
+          -r-border",                                                    
+      132 -              ].join(" ")}                                    
+      133 -            />                                                
+      134 -            {fieldErrors.password && (                        
+      135 -              <p className="mt-1 text-xs text-error">{fieldErr
+          -ors.password}</p>                                             
+      136 -            )}                                                
+      137 -          </div>                                              
+      138 -                                                              
+       98            {error && (
+       99              <p className="mb-4 rounded-lg bg-error-light px-3 
+           py-2 text-sm text-error">
+      100                {error}
+
+● Write(src\frontend\auth\SignupPage.tsx)
+  ⎿  Added 24 lines, removed 65 lines
+       4  import { useSearchParams } from "next/navigation";
+       5  import { useState } from "react";
+       6  import { supabase } from "@/frontend/lib/supabase-browser";
+       7 +import { safeRedirect } from "@/frontend/lib/auth";            
+       8 +import AuthField from "./AuthField";                           
+       9 +import GoogleOAuthSection from "./GoogleOAuthSection";         
+      10  
+       8 -function safeRedirect(value: string | null): string {          
+       9 -  if (!value || !value.startsWith("/") || value.startsWith("//"
+         -)) return "/";                                                 
+      10 -  return value;                                                
+      11 -}                                                              
+      12 -                                                               
+      11  export default function SignupPage() {
+      12    const searchParams = useSearchParams();
+      13    const redirect = safeRedirect(searchParams.get("redirect"));
+     ...
+       98            Create your account
+       99          </h1>
+      100  
+      103 -        <button                                               
+      104 -          type="button"                                       
+      105 -          onClick={handleOAuth}                               
+      106 -          className="mb-4 flex w-full items-center justify-cen
+          -ter gap-2 rounded-lg border border-border bg-surface py-2.5 te
+          -xt-sm font-medium text-text transition-colors hover:bg-surface
+          --alt"                                                         
+      107 -        >                                                     
+      108 -          Continue with Google                                
+      109 -        </button>                                             
+      101 +        <GoogleOAuthSection onClick={handleOAuth} />          
+      102  
+      111 -        <div className="mb-4 flex items-center gap-3">        
+      112 -          <hr className="flex-1 border-border" />             
+      113 -          <span className="text-xs text-text-secondary">or</sp
+          -an>                                                           
+      114 -          <hr className="flex-1 border-border" />             
+      115 -        </div>                                                
+      116 -                                                              
+      103          <form onSubmit={handleSubmit} noValidate>
+      118 -          <div className="mb-4">                              
+      119 -            <label                                            
+      120 -              htmlFor="email"                                 
+      121 -              className="mb-1 block text-sm font-medium text-t
+          -ext"                                                          
+      122 -            >                                                 
+      123 -              Email                                           
+      124 -            </label>                                          
+      125 -            <input                                            
+      126 -              id="email"                                      
+      127 -              type="email"                                    
+      128 -              autoComplete="email"                            
+      129 -              value={email}                                   
+      130 -              onChange={(e) => setEmail(e.target.value)}      
+      131 -              className={[                                    
+      132 -                "w-full rounded-lg border px-3 py-2 text-sm te
+          -xt-text outline-none transition-colors",                      
+      133 -                "focus:ring-2 focus:ring-border-focus",       
+      134 -                fieldErrors.email ? "border-error" : "border-b
+          -order",                                                       
+      135 -              ].join(" ")}                                    
+      136 -            />                                                
+      137 -            {fieldErrors.email && (                           
+      138 -              <p className="mt-1 text-xs text-error">{fieldErr
+          -ors.email}</p>                                                
+      139 -            )}                                                
+      140 -          </div>                                              
+      104 +          <AuthField                                          
+      105 +            id="email"                                        
+      106 +            label="Email"                                     
+      107 +            type="email"                                      
+      108 +            autoComplete="email"                              
+      109 +            value={email}                                     
+      110 +            onChange={setEmail}                               
+      111 +            error={fieldErrors.email}                         
+      112 +            className="mb-4"                                  
+      113 +          />                                                  
+      114 +          <AuthField                                          
+      115 +            id="password"                                     
+      116 +            label="Password"                                  
+      117 +            type="password"                                   
+      118 +            autoComplete="new-password"                       
+      119 +            value={password}                                  
+      120 +            onChange={setPassword}                            
+      121 +            error={fieldErrors.password}                      
+      122 +            className="mb-6"                                  
+      123 +          />                                                  
+      124  
+      142 -          <div className="mb-6">                              
+      143 -            <label                                            
+      144 -              htmlFor="password"                              
+      145 -              className="mb-1 block text-sm font-medium text-t
+          -ext"                                                          
+      146 -            >                                                 
+      147 -              Password                                        
+      148 -            </label>                                          
+      149 -            <input                                            
+      150 -              id="password"                                   
+      151 -              type="password"                                 
+      152 -              autoComplete="new-password"                     
+      153 -              value={password}                                
+      154 -              onChange={(e) => setPassword(e.target.value)}   
+      155 -              className={[                                    
+      156 -                "w-full rounded-lg border px-3 py-2 text-sm te
+          -xt-text outline-none transition-colors",                      
+      157 -                "focus:ring-2 focus:ring-border-focus",       
+      158 -                fieldErrors.password ? "border-error" : "borde
+          -r-border",                                                    
+      159 -              ].join(" ")}                                    
+      160 -            />                                                
+      161 -            {fieldErrors.password && (                        
+      162 -              <p className="mt-1 text-xs text-error">{fieldErr
+          -ors.password}</p>                                             
+      163 -            )}                                                
+      164 -          </div>                                              
+      165 -                                                              
+      125            {error && (
+      126              <p className="mb-4 rounded-lg bg-error-light px-3 
+           py-2 text-sm text-error">
+      127                {error}
+
+● Now run the full test suite to confirm still green.
+
+● Bash(cd "D:\files\coding\portfolio\comicly" && npm test 2>&1 | tail -15)
+  ⎿  > comicly@0.1.0 test
+     > vitest run
+     … +9 lines (ctrl+o to expand)
+  ⎿  (timeout 1m)
+
+● 105/105 still green. Quick lint check.
+
+● Bash(cd "D:\files\coding\portfolio\comicly" && npm run lint 2>&1 | grep -E
+      "auth|Error|error" | grep -v "^$")
+  ⎿    84:11  error  Do not use an `<a>` element to navigate to `/`. Use `<
+     Link />` from `next/link` instead. See: https://nextjs.org/docs/messag
+     es/no-html-link-for-pages  @next/next/no-html-link-for-pages
+     … +2 lines (ctrl+o to expand)
+  ⎿  (timeout 30s)
+
+● No new issues — only the pre-existing QAPage.tsx error.
+
+  ---
+  REFACTOR complete. Here's what changed and why:
+
+  Extracted: safeRedirect
+  File: src/frontend/lib/auth.ts
+  Reason: Security function — one source of truth, was identical in both pages
+  ────────────────────────────────────────
+  Extracted: AuthField
+  File: src/frontend/auth/AuthField.tsx
+  Reason: Label + input + error block appeared 4 times; callers now pass
+    onChange={setEmail} directly
+  ────────────────────────────────────────
+  Extracted: GoogleOAuthSection
+  File: src/frontend/auth/GoogleOAuthSection.tsx
+  Reason: Google button + "or" divider were byte-for-byte identical; adding a
+    second OAuth provider later means one edit
+
+  LoginPage: 167 → 110 lines. SignupPage: 194 → 122 lines. Both pages now read
+  as pure business logic — state, validation, submit handlers, and layout
+  structure — with no repeated JSX noise.
+
+✻ Crunched for 2m 41s

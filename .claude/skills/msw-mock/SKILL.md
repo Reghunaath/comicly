@@ -1,20 +1,21 @@
-------
-
-## name: msw-mock description: Write MSW v2 mock handlers for Comicly frontend component tests. Use this skill whenever writing or modifying test files under src/frontend/**/**tests**/ that need to intercept API calls.
+---
+name: msw-mock
+description: Write MSW v2 mock handlers for Comicly frontend component tests. Use whenever writing or modifying test files under src/frontend/**/__tests__/ that need to intercept API calls. Triggers include '写测试', '加测试', 'mock API', 'msw handler', 'component test', 'write tests for', or any Vitest + React Testing Library test touching /api/comic/* endpoints. Enforces MSW v2 conventions (setupServer from msw/node, http + HttpResponse), the canonical lifecycle (listen/resetHandlers/close), per-test overrides via server.use(), and the Supabase + next/navigation mock patterns specific to this project. Do NOT use for E2E tests (Playwright uses its own interception), backend unit tests, or non-test files.
+---
 
 # MSW Mock Writing Skill — Comicly Frontend
 
 This skill guides writing `msw` v2 mock handlers for Comicly's Vitest + React Testing Library component tests. Follow every rule here precisely. Deviating introduces silent failures that are hard to debug.
 
-------
 ## Announce on activation
 
 At the start of the first response after this skill is loaded, state one line:
 
-> 📘 Using skill `msw-writer`.
+> 📘 Using skill `msw-mock`.
 
 Do this once per session, not on every turn. If the skill has already been announced earlier in the conversation, skip the announcement on subsequent turns.
 
+---
 
 ## 0. Pre-flight Checklist
 
@@ -30,8 +31,7 @@ pnpm list msw @testing-library/react @testing-library/user-event @testing-librar
 
 If any dependency is missing: `pnpm add -D msw @testing-library/user-event @testing-library/jest-dom`
 
-Before doing anything, say "✅ Loaded: msw-mock"
-------
+---
 
 ## 1. Canonical Server Setup
 
@@ -56,7 +56,7 @@ afterAll(() => server.close());
 - `server.resetHandlers()` in `afterEach` — never `afterAll`. Handlers overridden with `server.use()` inside a test must be cleaned up immediately after.
 - Never share a `server` instance across test files. Each file has its own.
 
-------
+---
 
 ## 2. Comicly API Handler Reference
 
@@ -293,7 +293,7 @@ http.delete("/api/comic/:id", () =>
 ),
 ```
 
-------
+---
 
 ## 3. Error Override Patterns
 
@@ -344,7 +344,7 @@ it("shows regen limit error on 4th regeneration", async () => {
 });
 ```
 
-------
+---
 
 ## 4. Loading State Testing
 
@@ -374,7 +374,7 @@ it("disables Submit button while POST is in-flight", async () => {
 });
 ```
 
-------
+---
 
 ## 5. Request Body Assertion
 
@@ -407,7 +407,7 @@ it("sends correct payload shape to POST /api/comic", async () => {
 });
 ```
 
-------
+---
 
 ## 6. Supabase Auth Mock
 
@@ -449,7 +449,7 @@ vi.mock("@/frontend/lib/supabase-browser", () => ({
 }));
 ```
 
-------
+---
 
 ## 7. Next.js Router Mock
 
@@ -471,7 +471,7 @@ beforeEach(() => {
 });
 ```
 
-------
+---
 
 ## 8. Common Mistakes to Avoid
 
@@ -488,7 +488,7 @@ beforeEach(() => {
 | Sharing msw server across test files                    | Each test file creates its own `setupServer` instance        |
 | Mocking Supabase client via msw                         | Mock the module with `vi.mock("@/frontend/lib/supabase-browser", ...)` |
 
-------
+---
 
 ## 9. Full File Template
 
@@ -538,6 +538,14 @@ describe("LandingPage", () => {
 });
 ```
 
-## 10 Handler Refactor
+---
 
-After completing required handlers, scan all other existing handlers and refactor handlers that does not meet the requirement of this SKILL. Remove duplicate handlers.
+## 10. Handler Refactor (opt-in only)
+
+**Do not run this step unless the user explicitly asks for a refactor of existing handlers.** After completing a required task, do not go out of scope to modify unrelated test files.
+
+When the user does ask for refactor:
+- Scan existing handlers in the target files only
+- Flag handlers that violate the rules in Sections 1–8 (e.g. `afterAll` resetHandlers, `fireEvent` usage, shared `server` instances)
+- Remove duplicate handlers
+- Present a diff summary before applying changes
