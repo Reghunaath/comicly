@@ -207,11 +207,12 @@ Branch naming: `reghu/<feature-slug>` — one branch per issue, merge to `main` 
 - Work is structured issue by issue (GitHub issues #9–#34 are Reghu's backend issues).
 
 ### Issue-by-Issue Workflow
-1. Implement one GitHub issue completely.
-2. Stop and summarise what was built. Wait for Reghu's explicit confirmation.
-3. Only after confirmation: commit all changes for that issue.
-4. Push the branch to remote.
-5. Only after pushing: move to the next issue. Do not chain issues autonomously.
+1. Before starting an issue: create the branch, then brief Reghu on what will be built (files, functions, tests). Wait for his explicit go-ahead before writing any code.
+2. Implement the issue completely.
+3. Stop and summarise what was built. Wait for Reghu's explicit confirmation.
+4. Only after confirmation: commit all changes for that issue.
+5. Push the branch to remote.
+6. Only after pushing: move to the next issue. Do not chain issues autonomously.
 
 ### Commit After Each Approved Issue
 - Commit message must reference the issue number: `feat(backend): ... (#<issue-number>)`
