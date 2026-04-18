@@ -427,7 +427,7 @@ export default function ScriptReviewPage({ comicId }: { comicId: string }) {
                             {panel.dialogue.map((line, lineIdx) => (
                               <li key={lineIdx} className="text-sm text-text">
                                 {isEditing ? (
-                                  <div className="flex gap-2">
+                                  <div className="grid grid-cols-[10rem_1fr] gap-2">
                                     <input
                                       aria-label={`Page ${page.pageNumber} panel ${panel.panelNumber} line ${lineIdx + 1} speaker`}
                                       value={
@@ -461,7 +461,7 @@ export default function ScriptReviewPage({ comicId }: { comicId: string }) {
                                           return { ...prev, pages };
                                         })
                                       }
-                                      className="w-28 rounded-lg border border-border bg-background px-2 py-1 text-sm font-semibold text-text focus:outline-none focus:ring-2 focus:ring-primary"
+                                      className="min-w-0 rounded-lg border border-border bg-background px-2 py-1 text-sm font-semibold text-text focus:outline-none focus:ring-2 focus:ring-primary"
                                     />
                                     <input
                                       aria-label={`Page ${page.pageNumber} panel ${panel.panelNumber} line ${lineIdx + 1} text`}
@@ -496,7 +496,7 @@ export default function ScriptReviewPage({ comicId }: { comicId: string }) {
                                           return { ...prev, pages };
                                         })
                                       }
-                                      className="flex-1 rounded-lg border border-border bg-background px-2 py-1 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary"
+                                      className="min-w-0 rounded-lg border border-border bg-background px-2 py-1 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary"
                                     />
                                   </div>
                                 ) : (
