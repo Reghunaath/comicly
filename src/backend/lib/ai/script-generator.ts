@@ -20,15 +20,19 @@ async function callGeminiText(prompt: string): Promise<string> {
   return response.text ?? "";
 }
 
+function stripCodeFences(text: string): string {
+  return text.replace(/^```(?:json)?\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+}
+
 async function parseJsonWithRetry<T>(
   firstResponse: string,
   retryPrompt: () => Promise<string>
 ): Promise<T> {
   try {
-    return JSON.parse(firstResponse) as T;
+    return JSON.parse(stripCodeFences(firstResponse)) as T;
   } catch {
     const retried = await retryPrompt();
-    return JSON.parse(retried) as T;
+    return JSON.parse(stripCodeFences(retried)) as T;
   }
 }
 
