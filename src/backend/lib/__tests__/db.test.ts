@@ -41,8 +41,9 @@ const dbComic = {
   page_count: 3,
   follow_up_questions: [{ id: "q1", question: "Name?" }],
   follow_up_answers: { q1: "Whiskers" },
-  script: { title: "Ninja Cat", synopsis: "A short tale.", pages: [] },
+  script: { title: "Ninja Cat", synopsis: "A short tale.", characters: [], pages: [] },
   generation_mode: null,
+  character_sheet_url: null,
   current_page_index: 0,
 };
 
@@ -117,6 +118,17 @@ describe("mapDbToComic", () => {
   it("maps null generation_mode to undefined", () => {
     const result = mapDbToComic(dbComic, null);
     expect(result.generationMode).toBeUndefined();
+  });
+
+  it("maps character_sheet_url to characterSheetUrl", () => {
+    const comicWithSheet = { ...dbComic, character_sheet_url: "https://example.com/sheet.png" };
+    const result = mapDbToComic(comicWithSheet, null);
+    expect(result.characterSheetUrl).toBe("https://example.com/sheet.png");
+  });
+
+  it("maps null character_sheet_url to undefined", () => {
+    const result = mapDbToComic(dbComic, null);
+    expect(result.characterSheetUrl).toBeUndefined();
   });
 
   it("maps follow_up_questions correctly", () => {
@@ -214,5 +226,15 @@ describe("mapComicToDb", () => {
   it("maps generationMode to generation_mode", () => {
     const result = mapComicToDb({ id: "c1", generationMode: "automated" });
     expect(result.generation_mode).toBe("automated");
+  });
+
+  it("maps characterSheetUrl to character_sheet_url", () => {
+    const result = mapComicToDb({ id: "c1", characterSheetUrl: "https://example.com/sheet.png" });
+    expect(result.character_sheet_url).toBe("https://example.com/sheet.png");
+  });
+
+  it("omits character_sheet_url when characterSheetUrl is undefined", () => {
+    const result = mapComicToDb({ id: "c1", status: "generating" });
+    expect(result.character_sheet_url).toBeUndefined();
   });
 });

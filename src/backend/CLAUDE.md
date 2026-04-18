@@ -142,6 +142,7 @@ Any variable without `NEXT_PUBLIC_` is automatically server-only in Next.js. Kee
 3. The route file: parse request → call handler → return `NextResponse.json(...)`.
 4. Error responses use `{ error: string }` with an appropriate HTTP status.
 5. For long-running routes (image generation), add `export const maxDuration = 300;` to the route file.
+6. Add the new endpoint to the Swagger spec in `src/app/api/docs/route.ts`.
 
 ---
 

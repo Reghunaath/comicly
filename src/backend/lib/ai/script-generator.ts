@@ -40,6 +40,9 @@ export function validateScript(script: Script, expectedPageCount: number): void 
   if (!script.title || typeof script.title !== "string") {
     throw new Error("Script missing title");
   }
+  if (!Array.isArray(script.characters)) {
+    throw new Error("Script missing characters array");
+  }
   if (!Array.isArray(script.pages) || script.pages.length !== expectedPageCount) {
     throw new Error(
       `Script has ${script.pages?.length ?? 0} pages, expected ${expectedPageCount}`

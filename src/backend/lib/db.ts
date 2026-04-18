@@ -29,6 +29,7 @@ interface DbComic {
   follow_up_answers: Record<string, string> | null;
   script: Script | null;
   generation_mode: GenerationMode | null;
+  character_sheet_url: string | null;
   current_page_index: number;
 }
 
@@ -88,6 +89,7 @@ export function mapDbToComic(
     followUpAnswers: comic.follow_up_answers ?? undefined,
     script: comic.script ?? undefined,
     generationMode: comic.generation_mode ?? undefined,
+    characterSheetUrl: comic.character_sheet_url ?? undefined,
     currentPageIndex: comic.current_page_index,
     pages: (pages ?? []).map(mapDbToPage),
   };
@@ -137,6 +139,8 @@ export function mapComicToDb(
   if (comic.script !== undefined) db.script = comic.script;
   if (comic.generationMode !== undefined)
     db.generation_mode = comic.generationMode;
+  if (comic.characterSheetUrl !== undefined)
+    db.character_sheet_url = comic.characterSheetUrl ?? null;
   if (comic.currentPageIndex !== undefined)
     db.current_page_index = comic.currentPageIndex;
 
