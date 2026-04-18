@@ -210,7 +210,8 @@ Branch naming: `reghu/<feature-slug>` — one branch per issue, merge to `main` 
 1. Implement one GitHub issue completely.
 2. Stop and summarise what was built. Wait for Reghu's explicit confirmation.
 3. Only after confirmation: commit all changes for that issue.
-4. Only after committing: move to the next issue. Do not chain issues autonomously.
+4. Push the branch to remote.
+5. Only after pushing: move to the next issue. Do not chain issues autonomously.
 
 ### Commit After Each Approved Issue
 - Commit message must reference the issue number: `feat(backend): ... (#<issue-number>)`
