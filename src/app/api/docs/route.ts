@@ -148,6 +148,20 @@ const spec = {
         },
       },
     },
+    "/api/comic/{id}/generate-all": {
+      post: {
+        summary: "Generate all pages (automated mode)",
+        description: "Generates a character sheet then all page images sequentially. Transitions status to generating → complete. Long-running — maxDuration 300s.",
+        tags: ["Generation"],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+        responses: {
+          "200": { description: "All pages generated", content: { "application/json": { schema: { type: "object", properties: { comic: { type: "object" } } } } } },
+          "400": { description: "Status or mode error" },
+          "404": { description: "Comic not found" },
+          "500": { description: "Internal server error" },
+        },
+      },
+    },
     "/api/comic/random-idea": {
       get: {
         summary: "Generate random idea",

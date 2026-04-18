@@ -69,6 +69,10 @@ All business logic lives in `src/backend/`. See `src/backend/CLAUDE.md` for conv
 
 ---
 
+## Swagger Spec
+
+Every route must appear in `src/app/api/docs/route.ts`. When a new route is created, add it to the `paths` object in that file before considering the route done. No exceptions.
+
 ## Working Preferences
 
 ### PRD Is the Source of Truth

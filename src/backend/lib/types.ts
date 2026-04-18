@@ -38,6 +38,7 @@ export interface Comic {
 
   // Generation
   generationMode?: GenerationMode;
+  characterSheetUrl?: string;
   pages: Page[];
   currentPageIndex: number;           // Tracks progress in supervised mode
 }
@@ -47,9 +48,17 @@ export interface FollowUpQuestion {
   question: string;
 }
 
+export interface Character {
+  name: string;
+  appearance: string;  // Exhaustive visual description (age, ethnicity, skin, height, build, hair, eyes, distinguishing features)
+  clothing: string;    // Default outfit used in every panel they appear in
+  personality: string; // 2-3 traits that inform pose and expression choices
+}
+
 export interface Script {
   title: string;
   synopsis: string;
+  characters: Character[];
   pages: ScriptPage[];
 }
 

@@ -4,14 +4,23 @@ import {
   buildRandomIdeaPrompt,
   buildScriptPrompt,
   buildScriptRegenerationPrompt,
-  buildImagePrompt,
+  buildPageImagePrompt,
+  buildCharacterSheetPrompt,
   buildJsonRetryPrompt,
 } from "../prompts";
-import type { Script, ScriptPage } from "@/backend/lib/types";
+import type { Character, Script, ScriptPage } from "@/backend/lib/types";
+
+const mockCharacter: Character = {
+  name: "Detective Mira",
+  appearance: "A woman in her mid-30s of South Asian descent with warm brown skin and a lean athletic build. She has high cheekbones, sharp almond-shaped dark brown eyes, and a straight nose. Her black hair is cut in a short blunt bob that falls to her jaw.",
+  clothing: "A charcoal grey trench coat over a white button-down shirt, dark slim trousers, and worn leather Oxford shoes.",
+  personality: "Methodical, quietly intense, dry sense of humour.",
+};
 
 const mockScript: Script = {
   title: "Test Comic",
   synopsis: "A test synopsis.",
+  characters: [mockCharacter],
   pages: [
     {
       pageNumber: 1,
@@ -110,6 +119,17 @@ describe("buildScriptPrompt", () => {
     const result = buildScriptPrompt("Ninja cats", "western_comic", 3);
     expect(result).toContain("ONLY valid JSON");
   });
+
+  it("requires a characters array in the JSON structure", () => {
+    const result = buildScriptPrompt("Ninja cats", "western_comic", 3);
+    expect(result).toContain('"characters"');
+  });
+
+  it("requires exhaustive character appearance descriptions", () => {
+    const result = buildScriptPrompt("Ninja cats", "western_comic", 3);
+    expect(result).toContain("appearance");
+    expect(result).toContain("clothing");
+  });
 });
 
 describe("buildScriptRegenerationPrompt", () => {
@@ -135,45 +155,110 @@ describe("buildScriptRegenerationPrompt", () => {
   });
 });
 
-describe("buildImagePrompt", () => {
+describe("buildCharacterSheetPrompt", () => {
+  it("includes character names", () => {
+    const result = buildCharacterSheetPrompt(mockScript, "manga");
+    expect(result).toContain("Detective Mira");
+  });
+
+  it("includes character appearance", () => {
+    const result = buildCharacterSheetPrompt(mockScript, "manga");
+    expect(result).toContain(mockCharacter.appearance);
+  });
+
+  it("mentions reference sheet purpose", () => {
+    const result = buildCharacterSheetPrompt(mockScript, "manga");
+    expect(result).toContain("reference sheet");
+  });
+
+  it("specifies multiple views", () => {
+    const result = buildCharacterSheetPrompt(mockScript, "manga");
+    expect(result).toContain("front view");
+    expect(result).toContain("3/4 view");
+  });
+
+  it("uses art style description", () => {
+    const result = buildCharacterSheetPrompt(mockScript, "manga");
+    expect(result).toContain("manga");
+  });
+
+  it("uses custom style prompt verbatim", () => {
+    const result = buildCharacterSheetPrompt(mockScript, "custom", "oil painting style");
+    expect(result).toContain("oil painting style");
+  });
+
+  it("handles empty characters array gracefully", () => {
+    const emptyScript = { ...mockScript, characters: [] };
+    const result = buildCharacterSheetPrompt(emptyScript, "manga");
+    expect(result.length).toBeGreaterThan(0);
+  });
+});
+
+describe("buildPageImagePrompt", () => {
   it("includes the comic title", () => {
-    const result = buildImagePrompt(mockPage, "manga", "Detective Nights", 5);
+    const result = buildPageImagePrompt(mockPage, "manga", "Detective Nights", 5);
     expect(result).toContain("Detective Nights");
   });
 
   it("includes the page number and total pages", () => {
-    const result = buildImagePrompt(mockPage, "manga", "Detective Nights", 5);
+    const result = buildPageImagePrompt(mockPage, "manga", "Detective Nights", 5);
     expect(result).toContain("page 1 of 5");
   });
 
   it("includes panel descriptions", () => {
-    const result = buildImagePrompt(mockPage, "manga", "Detective Nights", 5);
+    const result = buildPageImagePrompt(mockPage, "manga", "Detective Nights", 5);
     expect(result).toContain("A detective examines a clue.");
   });
 
   it("includes dialogue", () => {
-    const result = buildImagePrompt(mockPage, "manga", "Detective Nights", 5);
+    const result = buildPageImagePrompt(mockPage, "manga", "Detective Nights", 5);
     expect(result).toContain("Interesting...");
   });
 
   it("includes caption when present", () => {
-    const result = buildImagePrompt(mockPage, "manga", "Detective Nights", 5);
+    const result = buildPageImagePrompt(mockPage, "manga", "Detective Nights", 5);
     expect(result).toContain("The mystery deepens.");
   });
 
   it("uses art style prompt fragment for presets", () => {
-    const result = buildImagePrompt(mockPage, "manga", "Detective Nights", 5);
+    const result = buildPageImagePrompt(mockPage, "manga", "Detective Nights", 5);
     expect(result).toContain("manga");
   });
 
   it("uses custom style prompt verbatim for custom art style", () => {
-    const result = buildImagePrompt(mockPage, "custom", "Detective Nights", 5, "oil painting style");
+    const result = buildPageImagePrompt(mockPage, "custom", "Detective Nights", 5, "oil painting style");
     expect(result).toContain("oil painting style");
   });
 
   it("includes aspect ratio", () => {
-    const result = buildImagePrompt(mockPage, "manga", "Detective Nights", 5);
+    const result = buildPageImagePrompt(mockPage, "manga", "Detective Nights", 5);
     expect(result).toContain("2:3");
+  });
+
+  it("includes CHARACTER REFERENCE SHEET instruction when hasCharacterSheet is true", () => {
+    const result = buildPageImagePrompt(mockPage, "manga", "Detective Nights", 5, undefined, true);
+    expect(result).toContain("CHARACTER REFERENCE SHEET");
+  });
+
+  it("does not include CHARACTER REFERENCE SHEET instruction when hasCharacterSheet is false", () => {
+    const result = buildPageImagePrompt(mockPage, "manga", "Detective Nights", 5, undefined, false);
+    expect(result).not.toContain("CHARACTER REFERENCE SHEET");
+  });
+
+  it("includes PREVIOUS comic page instruction when hasPreviousPage is true", () => {
+    const result = buildPageImagePrompt(mockPage, "manga", "Detective Nights", 5, undefined, false, true);
+    expect(result).toContain("PREVIOUS comic page");
+  });
+
+  it("does not include PREVIOUS comic page instruction when hasPreviousPage is false", () => {
+    const result = buildPageImagePrompt(mockPage, "manga", "Detective Nights", 5, undefined, false, false);
+    expect(result).not.toContain("PREVIOUS comic page");
+  });
+
+  it("includes character appearance reference when characters are provided", () => {
+    const result = buildPageImagePrompt(mockPage, "manga", "Detective Nights", 5, undefined, false, false, [mockCharacter]);
+    expect(result).toContain("CHARACTER APPEARANCE REFERENCE");
+    expect(result).toContain("Detective Mira");
   });
 });
 
