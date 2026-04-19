@@ -43,6 +43,12 @@ export default function Header() {
         <div className="flex items-center gap-3">
           {loading ? null : user ? (
             <>
+              <Link
+                href="/library"
+                className="text-sm font-medium text-text-secondary transition-colors hover:text-text"
+              >
+                My Library
+              </Link>
               <span className="text-sm text-text-secondary truncate max-w-[160px]">
                 {user.email}
               </span>
