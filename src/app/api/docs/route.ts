@@ -119,6 +119,34 @@ const spec = {
         },
       },
     },
+    "/api/comic/{id}/script/regenerate": {
+      post: {
+        summary: "Regenerate script with feedback",
+        description: "Regenerates the script incorporating user feedback. Comic must be in script_draft status. Multiple rounds allowed.",
+        tags: ["Script"],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["feedback"],
+                properties: {
+                  feedback: { type: "string", maxLength: 2000, example: "Make the villain more sympathetic and add a plot twist in the middle" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Script regenerated", content: { "application/json": { schema: { type: "object", properties: { script: { type: "object" } } } } } },
+          "400": { description: "Validation or status error" },
+          "404": { description: "Comic not found" },
+          "500": { description: "Internal server error" },
+        },
+      },
+    },
     "/api/comic/{id}/approve": {
       put: {
         summary: "Approve script",
