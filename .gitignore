@@ -29,6 +29,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+nano-banana-requests.log
 
 # env files (can opt-in for committing if needed)
 .env*
@@ -41,6 +42,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .playwright-mcp
-docs
+/docs
 
 /references
