@@ -16,8 +16,7 @@ type Phase =
   | "generate_error"
   | "reviewing"
   | "approving"
-  | "approve_error"
-  | "regen_error";
+  | "approve_error";
 
 export default function SupervisedReviewPage({ comicId }: { comicId: string }) {
   const router = useRouter();
@@ -28,8 +27,6 @@ export default function SupervisedReviewPage({ comicId }: { comicId: string }) {
   const [currentPage, setCurrentPage] = useState<Page | null>(null);
   const [selectedVersionIndex, setSelectedVersionIndex] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [showRegenInput, setShowRegenInput] = useState(false);
-  const [regenFeedback, setRegenFeedback] = useState("");
 
   // -------------------------------------------------------------------------
   // On mount: fetch comic and determine resume point
@@ -81,18 +78,14 @@ export default function SupervisedReviewPage({ comicId }: { comicId: string }) {
   async function handleRegenerate() {
     setPhase("generating");
     setErrorMessage(null);
-    setShowRegenInput(false);
     try {
-      const { page } = await regeneratePage(comicId, currentPageNum, regenFeedback || undefined);
+      const { page } = await regeneratePage(comicId, currentPageNum);
       setCurrentPage(page);
       setSelectedVersionIndex(page.versions.length - 1);
       setPhase("reviewing");
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Regeneration failed.");
-      setPhase("regen_error");
-      setShowRegenInput(true);
-    } finally {
-      setRegenFeedback("");
+      setPhase("generate_error");
     }
   }
 
@@ -256,7 +249,7 @@ export default function SupervisedReviewPage({ comicId }: { comicId: string }) {
         )}
 
         {/* ── Error message ──────────────────────────────────────────────── */}
-        {(phase === "generate_error" || phase === "regen_error" || phase === "approve_error") && errorMessage && (
+        {(phase === "generate_error" || phase === "approve_error") && errorMessage && (
           <div className="mb-4 rounded-lg border border-error-light bg-error-light px-4 py-3 text-sm text-error">
             {errorMessage}
           </div>
@@ -285,48 +278,17 @@ export default function SupervisedReviewPage({ comicId }: { comicId: string }) {
                 {isLastPage ? "Approve & Finish" : "Approve & Next"}
               </button>
 
-              {showRegenInput ? (
-                <div className="rounded-xl border border-border bg-surface p-4">
-                  <textarea
-                    aria-label="Regeneration feedback"
-                    value={regenFeedback}
-                    onChange={(e) => setRegenFeedback(e.target.value)}
-                    placeholder="e.g. Make the sky darker, add rain…"
-                    rows={3}
-                    className="mb-3 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-text placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleRegenerate}
-                      disabled={isGenerating || isApproving}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-text-inverse transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {isGenerating && <Spinner className="h-4 w-4 border-text-inverse" />}
-                      Regenerate
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setShowRegenInput(false); setRegenFeedback(""); }}
-                      disabled={isGenerating || isApproving}
-                      className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-surface-alt disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowRegenInput(true)}
-                  disabled={isGenerating || isApproving || !canRegenerate}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface px-6 py-3 text-sm font-semibold text-text transition-colors hover:bg-surface-alt disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {canRegenerate
-                    ? `Suggest Changes (${MAX_PAGE_REGENERATIONS - regenerationsUsed} left)`
-                    : "Regeneration limit reached"}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleRegenerate}
+                disabled={isGenerating || isApproving || !canRegenerate}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface px-6 py-3 text-sm font-semibold text-text transition-colors hover:bg-surface-alt disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isGenerating && <Spinner className="h-4 w-4 border-text" />}
+                {canRegenerate
+                  ? `Regenerate (${MAX_PAGE_REGENERATIONS - regenerationsUsed} left)`
+                  : "Regeneration limit reached"}
+              </button>
             </>
           )}
         </div>
