@@ -16,7 +16,8 @@ type Phase =
   | "generate_error"
   | "reviewing"
   | "approving"
-  | "approve_error";
+  | "approve_error"
+  | "regen_error";
 
 export default function SupervisedReviewPage({ comicId }: { comicId: string }) {
   const router = useRouter();
@@ -88,7 +89,8 @@ export default function SupervisedReviewPage({ comicId }: { comicId: string }) {
       setPhase("reviewing");
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Regeneration failed.");
-      setPhase("generate_error");
+      setPhase("regen_error");
+      setShowRegenInput(true);
     } finally {
       setRegenFeedback("");
     }
@@ -254,7 +256,7 @@ export default function SupervisedReviewPage({ comicId }: { comicId: string }) {
         )}
 
         {/* ── Error message ──────────────────────────────────────────────── */}
-        {(phase === "generate_error" || phase === "approve_error") && errorMessage && (
+        {(phase === "generate_error" || phase === "regen_error" || phase === "approve_error") && errorMessage && (
           <div className="mb-4 rounded-lg border border-error-light bg-error-light px-4 py-3 text-sm text-error">
             {errorMessage}
           </div>

@@ -229,7 +229,28 @@ async function mockCreateComic(payload: {
 
 async function mockGetComic(id: string): Promise<{ comic: Comic }> {
   await delay(500);
-  const isComplete = _mockCompletedComics.has(id);
+  const pageCount = 5;
+
+  const allPagesSupervised = Array.from({ length: pageCount }, (_, i) =>
+    _mockPageVersions.has(`${id}-p${i + 1}`)
+  ).every(Boolean);
+
+  const isComplete = _mockCompletedComics.has(id) || allPagesSupervised;
+
+  let pages: Comic["pages"] = [];
+  if (_mockCompletedComics.has(id)) {
+    pages = Array.from({ length: pageCount }, (_, i) => ({
+      pageNumber: i + 1,
+      versions: [{ imageUrl: `https://picsum.photos/seed/${id}-p${i + 1}/800/1200`, generatedAt: new Date().toISOString() }],
+      selectedVersionIndex: 0,
+    }));
+  } else if (allPagesSupervised) {
+    pages = Array.from({ length: pageCount }, (_, i) => {
+      const versions = _mockPageVersions.get(`${id}-p${i + 1}`)!;
+      return { pageNumber: i + 1, versions, selectedVersionIndex: versions.length - 1 };
+    });
+  }
+
   return {
     comic: {
       id,
@@ -239,25 +260,14 @@ async function mockGetComic(id: string): Promise<{ comic: Comic }> {
       updatedAt: new Date().toISOString(),
       prompt: "A detective cat solves mysteries in a steampunk city",
       artStyle: "manga",
-      pageCount: 5,
+      pageCount,
       followUpQuestions: [
         { id: "q1", question: "Who is the main character and what drives them?" },
         { id: "q2", question: "What is the central conflict or challenge?" },
         { id: "q3", question: "What tone should the story have — lighthearted or serious?" },
       ],
-      pages: isComplete
-        ? Array.from({ length: 5 }, (_, i) => ({
-            pageNumber: i + 1,
-            versions: [
-              {
-                imageUrl: `https://picsum.photos/seed/${id}-p${i + 1}/800/1200`,
-                generatedAt: new Date().toISOString(),
-              },
-            ],
-            selectedVersionIndex: 0,
-          }))
-        : [],
-      currentPageIndex: isComplete ? 5 : 0,
+      pages,
+      currentPageIndex: isComplete ? pageCount : 0,
     },
   };
 }

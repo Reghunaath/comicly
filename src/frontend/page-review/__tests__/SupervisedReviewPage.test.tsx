@@ -288,4 +288,25 @@ describe("Regeneration API calls", () => {
       await screen.findByText(/ai service unavailable/i)
     ).toBeInTheDocument();
   });
+
+  it("keeps Approve and feedback input visible after failed regeneration", async () => {
+    server.use(
+      http.post("/api/comic/:id/page/regenerate", () =>
+        HttpResponse.json({ error: "AI service unavailable" }, { status: 503 })
+      )
+    );
+
+    const { user } = setup();
+    await openFeedbackPanel(user);
+    await user.click(screen.getByRole("button", { name: /^regenerate$/i }));
+
+    await screen.findByText(/ai service unavailable/i);
+
+    expect(
+      screen.getByRole("button", { name: /approve/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: /regeneration feedback/i })
+    ).toBeInTheDocument();
+  });
 });
