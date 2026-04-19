@@ -131,8 +131,20 @@ export async function regenerateScript(
 
 export async function generateAllPages(id: string): Promise<void> {
   if (USE_MOCK) return mockGenerateAllPages(id);
-  const res = await fetch(`/api/comic/${id}/generate-all`, { method: "POST" });
-  if (!res.ok) throw new Error("Failed to start generation");
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10_000);
+  try {
+    const res = await fetch(`/api/comic/${id}/generate-all`, {
+      method: "POST",
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error("Failed to start generation");
+  } catch (err) {
+    clearTimeout(timer);
+    if (err instanceof Error && err.name === "AbortError") return;
+    throw err;
+  }
 }
 
 // ---------------------------------------------------------------------------

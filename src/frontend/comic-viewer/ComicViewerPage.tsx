@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getComic, deleteComic } from "@/frontend/lib/api";
@@ -12,8 +12,6 @@ import jsPDF from "jspdf";
 type Phase = "loading" | "not_found" | "generating" | "complete" | "error";
 type DeletePhase = "idle" | "confirming" | "deleting" | "error";
 
-const STALE_POLL_THRESHOLD = 12; // 12 × 5s = 60s with no progress
-
 export default function ComicViewerPage({ comicId }: { comicId: string }) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("loading");
@@ -22,9 +20,6 @@ export default function ComicViewerPage({ comicId }: { comicId: string }) {
   const [toastVisible, setToastVisible] = useState(false);
   const [deletePhase, setDeletePhase] = useState<DeletePhase>("idle");
   const [exportingPdf, setExportingPdf] = useState(false);
-  const [generationStalled, setGenerationStalled] = useState(false);
-  const staleCountRef = useRef(0);
-  const lastPagesCountRef = useRef(0);
 
   // -------------------------------------------------------------------------
   // On mount: fetch comic + auth state in parallel
@@ -38,7 +33,6 @@ export default function ComicViewerPage({ comicId }: { comicId: string }) {
       .then(([{ comic: loaded }, { data: { user } }]) => {
         setComic(loaded);
         setCurrentUser(user);
-        lastPagesCountRef.current = loaded.pages.length;
         setPhase(loaded.status === "complete" ? "complete" : "generating");
       })
       .catch((err: unknown) => {
@@ -51,39 +45,18 @@ export default function ComicViewerPage({ comicId }: { comicId: string }) {
   }, [comicId]);
 
   // -------------------------------------------------------------------------
-  // Polling: check progress every 5s while generating
+  // Manual status check for comics still generating
   // -------------------------------------------------------------------------
 
-  useEffect(() => {
-    if (phase !== "generating") return;
-
-    const intervalId = setInterval(async () => {
-      try {
-        const { comic: updated } = await getComic(comicId);
-        setComic(updated);
-        if (updated.status === "complete") {
-          clearInterval(intervalId);
-          setPhase("complete");
-          return;
-        }
-        const newCount = updated.pages.length;
-        if (newCount > lastPagesCountRef.current) {
-          staleCountRef.current = 0;
-          lastPagesCountRef.current = newCount;
-        } else {
-          staleCountRef.current++;
-          if (staleCountRef.current >= STALE_POLL_THRESHOLD) {
-            clearInterval(intervalId);
-            setGenerationStalled(true);
-          }
-        }
-      } catch {
-        // Transient error — keep polling
-      }
-    }, 5000);
-
-    return () => clearInterval(intervalId);
-  }, [phase, comicId]);
+  async function handleCheckStatus() {
+    try {
+      const { comic: updated } = await getComic(comicId);
+      setComic(updated);
+      if (updated.status === "complete") setPhase("complete");
+    } catch {
+      // ignore transient errors
+    }
+  }
 
   // -------------------------------------------------------------------------
   // Share handler
@@ -191,7 +164,6 @@ export default function ComicViewerPage({ comicId }: { comicId: string }) {
 
   const title = comic?.script?.title ?? "Your Comic";
   const pages = comic?.pages ?? [];
-  const totalPages = comic?.pageCount ?? pages.length;
   const isOwner = !!(currentUser && comic?.userId && comic.userId === currentUser.id);
   const isGuest = currentUser === null;
 
@@ -311,28 +283,19 @@ export default function ComicViewerPage({ comicId }: { comicId: string }) {
         {phase === "generating" && (
           <div
             role="status"
-            aria-label="Generation progress"
-            className="mb-8 flex items-center gap-3 rounded-xl border border-border bg-surface px-5 py-4"
+            aria-label="Generation in progress"
+            className="mb-8 rounded-xl border border-border bg-surface px-5 py-4"
           >
-            {generationStalled ? (
-              <p className="text-sm font-medium text-text">
-                Generation appears to have stalled.{" "}
-                <button
-                  type="button"
-                  onClick={() => window.location.reload()}
-                  className="underline hover:opacity-75"
-                >
-                  Refresh to check again
-                </button>
-              </p>
-            ) : (
-              <>
-                <Spinner className="h-5 w-5 shrink-0 border-primary" />
-                <p className="text-sm font-medium text-text">
-                  Generating page {pages.length} of {totalPages}…
-                </p>
-              </>
-            )}
+            <p className="text-sm font-medium text-text">
+              This comic is still being generated.{" "}
+              <button
+                type="button"
+                onClick={handleCheckStatus}
+                className="underline hover:opacity-75"
+              >
+                Check status
+              </button>
+            </p>
           </div>
         )}
 
@@ -360,11 +323,7 @@ export default function ComicViewerPage({ comicId }: { comicId: string }) {
             })}
           </div>
         ) : (
-          phase === "generating" && !generationStalled && (
-            <p className="text-center text-sm text-text-secondary">
-              Pages will appear as they are generated…
-            </p>
-          )
+          null
         )}
 
       </div>

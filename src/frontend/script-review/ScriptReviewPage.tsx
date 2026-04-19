@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -19,7 +19,10 @@ type Phase =
   | "regenerating"
   | "approving"
   | "approve_error"
-  | "polling";
+  | "polling"
+  | "generation_failed";
+
+const STALE_POLL_THRESHOLD = 24; // 24 × 5s = 120s with no progress
 
 export default function ScriptReviewPage({ comicId }: { comicId: string }) {
   const router = useRouter();
@@ -35,6 +38,8 @@ export default function ScriptReviewPage({ comicId }: { comicId: string }) {
   const [regenError, setRegenError] = useState<string | null>(null);
   const [approveError, setApproveError] = useState<string | null>(null);
   const [generatedPages, setGeneratedPages] = useState(0);
+  const staleCountRef = useRef(0);
+  const lastPageIndexRef = useRef(0);
 
   // -------------------------------------------------------------------------
   // On mount: generate the script
@@ -62,6 +67,9 @@ export default function ScriptReviewPage({ comicId }: { comicId: string }) {
   useEffect(() => {
     if (phase !== "polling") return;
 
+    staleCountRef.current = 0;
+    lastPageIndexRef.current = 0;
+
     const intervalId = setInterval(async () => {
       try {
         const { comic } = await getComic(comicId);
@@ -69,6 +77,17 @@ export default function ScriptReviewPage({ comicId }: { comicId: string }) {
         if (comic.status === "complete") {
           clearInterval(intervalId);
           router.push(`/comic/${comicId}`);
+          return;
+        }
+        if (comic.currentPageIndex > lastPageIndexRef.current) {
+          staleCountRef.current = 0;
+          lastPageIndexRef.current = comic.currentPageIndex;
+        } else {
+          staleCountRef.current++;
+          if (staleCountRef.current >= STALE_POLL_THRESHOLD) {
+            clearInterval(intervalId);
+            setPhase("generation_failed");
+          }
         }
       } catch {
         // Transient error — keep polling
@@ -134,7 +153,7 @@ export default function ScriptReviewPage({ comicId }: { comicId: string }) {
       } else {
         setPhase("polling");
         // Fire-and-forget: POST may time out; polling detects completion
-        generateAllPages(comicId).catch(() => undefined);
+        generateAllPages(comicId).catch(() => setPhase("generation_failed"));
       }
     } catch (err) {
       setApproveError(
@@ -142,6 +161,30 @@ export default function ScriptReviewPage({ comicId }: { comicId: string }) {
       );
       setPhase("approve_error");
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // Retry handlers
+  // -------------------------------------------------------------------------
+
+  function handleRetryScript() {
+    setScriptError(null);
+    setPhase("generating_script");
+    generateScript(comicId)
+      .then(({ script: generated }) => {
+        setScript(generated);
+        setEditableScript(structuredClone(generated));
+        setPhase("ready");
+      })
+      .catch((err: unknown) => {
+        setScriptError(err instanceof Error ? err.message : "Something went wrong.");
+        setPhase("script_error");
+      });
+  }
+
+  function handleRetryGeneration() {
+    setPhase("polling");
+    generateAllPages(comicId).catch(() => setPhase("generation_failed"));
   }
 
   // -------------------------------------------------------------------------
@@ -169,12 +212,21 @@ export default function ScriptReviewPage({ comicId }: { comicId: string }) {
             Couldn&apos;t generate your script
           </p>
           <p className="mb-6 text-sm text-error">{scriptError}</p>
-          <Link
-            href="/"
-            className="inline-block rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-text-inverse transition-colors hover:bg-primary-hover"
-          >
-            Go back
-          </Link>
+          <div className="flex justify-center gap-3">
+            <button
+              type="button"
+              onClick={handleRetryScript}
+              className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-text-inverse transition-colors hover:bg-primary-hover"
+            >
+              Try again
+            </button>
+            <Link
+              href="/"
+              className="inline-block rounded-lg border border-error bg-transparent px-5 py-2 text-sm font-semibold text-error transition-colors hover:opacity-75"
+            >
+              Go back
+            </Link>
+          </div>
         </div>
       </main>
     );
@@ -187,12 +239,13 @@ export default function ScriptReviewPage({ comicId }: { comicId: string }) {
   const displayScript = isEditing ? editableScript : script;
   const totalPages = displayScript?.pages.length ?? 0;
   const isActionDisabled = phase === "regenerating" || phase === "approving";
+  const isGeneratingPhase = phase === "polling" || phase === "generation_failed";
 
   return (
     <main className="flex-1 bg-background">
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
 
-        {/* ── Progress banner (polling only) ─────────────────────────────── */}
+        {/* ── Progress / failure banner ──────────────────────────────────── */}
         {phase === "polling" && (
           <div
             role="status"
@@ -203,6 +256,23 @@ export default function ScriptReviewPage({ comicId }: { comicId: string }) {
             <p className="text-sm font-medium text-text">
               Generating page {generatedPages} of {totalPages}…
             </p>
+          </div>
+        )}
+        {phase === "generation_failed" && (
+          <div
+            role="alert"
+            className="mb-8 rounded-xl border border-error-light bg-error-light px-5 py-4"
+          >
+            <p className="mb-3 text-sm font-medium text-error">
+              Generation stalled or failed. This may be due to a server timeout.
+            </p>
+            <button
+              type="button"
+              onClick={handleRetryGeneration}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-text-inverse transition-colors hover:bg-primary-hover"
+            >
+              Try again
+            </button>
           </div>
         )}
 
@@ -247,7 +317,7 @@ export default function ScriptReviewPage({ comicId }: { comicId: string }) {
             </header>
 
             {/* ── Edit / Done / Cancel controls ─────────────────────────── */}
-            {phase !== "polling" && (
+            {!isGeneratingPhase && (
               <div className="mb-6 flex gap-2">
                 {isEditing ? (
                   <>
@@ -290,7 +360,7 @@ export default function ScriptReviewPage({ comicId }: { comicId: string }) {
             )}
 
             {/* ── Regenerate input panel ─────────────────────────────────── */}
-            {showRegenInput && !isEditing && phase !== "polling" && (
+            {showRegenInput && !isEditing && !isGeneratingPhase && (
               <div className="mb-6 rounded-xl border border-border bg-surface p-4">
                 <p className="mb-2 text-sm font-medium text-text">
                   What should be changed?
@@ -518,8 +588,8 @@ export default function ScriptReviewPage({ comicId }: { comicId: string }) {
           </article>
         )}
 
-        {/* ── Mode selection + Approve (hidden during polling / editing) ─── */}
-        {phase !== "polling" && !isEditing && (
+        {/* ── Mode selection + Approve (hidden during generation / editing) ─ */}
+        {!isGeneratingPhase && !isEditing && (
           <>
             <div className="mt-8" role="group" aria-label="Generation mode">
               <p className="mb-3 text-sm font-medium text-text">
