@@ -158,13 +158,14 @@ export async function generatePage(
 
 export async function regeneratePage(
   id: string,
-  pageNumber: number
+  pageNumber: number,
+  feedback?: string,
 ): Promise<{ page: import("./types").Page }> {
-  if (USE_MOCK) return mockRegeneratePage(id, pageNumber);
+  if (USE_MOCK) return mockRegeneratePage(id, pageNumber, feedback);
   const res = await fetch(`/api/comic/${id}/page/regenerate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pageNumber }),
+    body: JSON.stringify({ pageNumber, ...(feedback ? { feedback } : {}) }),
   });
   if (!res.ok) {
     const { error } = await res.json().catch(() => ({ error: "Unknown error" }));
@@ -339,8 +340,10 @@ async function mockGeneratePage(
 
 async function mockRegeneratePage(
   id: string,
-  pageNumber: number
+  pageNumber: number,
+  feedback?: string,
 ): Promise<{ page: import("./types").Page }> {
+  void feedback;
   await delay(1200);
   const key = `${id}-p${pageNumber}`;
   const existing = _mockPageVersions.get(key) ?? [];
