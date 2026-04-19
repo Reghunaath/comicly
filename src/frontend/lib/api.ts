@@ -185,13 +185,14 @@ export async function generatePage(
 
 export async function regeneratePage(
   id: string,
-  pageNumber: number
+  pageNumber: number,
+  feedback?: string
 ): Promise<{ page: import("./types").Page }> {
   if (USE_MOCK) return mockRegeneratePage(id, pageNumber);
   const res = await fetch(`/api/comic/${id}/page/regenerate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pageNumber }),
+    body: JSON.stringify({ pageNumber, ...(feedback ? { feedback } : {}) }),
   });
   if (!res.ok) {
     const { error } = await res.json().catch(() => ({ error: "Unknown error" }));
@@ -332,26 +333,6 @@ async function mockGetComic(id: string): Promise<{ comic: Comic }> {
         versions ? { pageNumber: i + 1, versions, selectedVersionIndex: versions.length - 1 } : null
       )
       .filter((p): p is Comic["pages"][number] => p !== null);
-  const pageCount = 5;
-
-  const allPagesSupervised = Array.from({ length: pageCount }, (_, i) =>
-    _mockPageVersions.has(`${id}-p${i + 1}`)
-  ).every(Boolean);
-
-  const isComplete = _mockCompletedComics.has(id) || allPagesSupervised;
-
-  let pages: Comic["pages"] = [];
-  if (_mockCompletedComics.has(id)) {
-    pages = Array.from({ length: pageCount }, (_, i) => ({
-      pageNumber: i + 1,
-      versions: [{ imageUrl: `https://picsum.photos/seed/${id}-p${i + 1}/800/1200`, generatedAt: new Date().toISOString() }],
-      selectedVersionIndex: 0,
-    }));
-  } else if (allPagesSupervised) {
-    pages = Array.from({ length: pageCount }, (_, i) => {
-      const versions = _mockPageVersions.get(`${id}-p${i + 1}`)!;
-      return { pageNumber: i + 1, versions, selectedVersionIndex: versions.length - 1 };
-    });
   }
 
   return {
@@ -371,7 +352,6 @@ async function mockGetComic(id: string): Promise<{ comic: Comic }> {
       ],
       pages,
       currentPageIndex: supervisedPageCount > 0 ? supervisedPageCount : (isComplete ? pageCount : 0),
-      currentPageIndex: isComplete ? pageCount : 0,
     },
   };
 }

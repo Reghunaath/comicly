@@ -27,6 +27,7 @@ export default function SupervisedReviewPage({ comicId }: { comicId: string }) {
   const [currentPage, setCurrentPage] = useState<Page | null>(null);
   const [selectedVersionIndex, setSelectedVersionIndex] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [regeneratePrompt, setRegeneratePrompt] = useState("");
 
   // -------------------------------------------------------------------------
   // On mount: fetch comic and determine resume point
@@ -79,9 +80,10 @@ export default function SupervisedReviewPage({ comicId }: { comicId: string }) {
     setPhase("generating");
     setErrorMessage(null);
     try {
-      const { page } = await regeneratePage(comicId, currentPageNum);
+      const { page } = await regeneratePage(comicId, currentPageNum, regeneratePrompt.trim() || undefined);
       setCurrentPage(page);
       setSelectedVersionIndex(page.versions.length - 1);
+      setRegeneratePrompt("");
       setPhase("reviewing");
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Regeneration failed.");
@@ -277,6 +279,17 @@ export default function SupervisedReviewPage({ comicId }: { comicId: string }) {
                 {isApproving && <Spinner className="h-4 w-4 border-text-inverse" />}
                 {isLastPage ? "Approve & Finish" : "Approve & Next"}
               </button>
+
+              {canRegenerate && (
+                <textarea
+                  value={regeneratePrompt}
+                  onChange={(e) => setRegeneratePrompt(e.target.value)}
+                  disabled={isGenerating || isApproving}
+                  placeholder="Optional: describe what to change (e.g. 'make the background darker')"
+                  rows={2}
+                  className="w-full resize-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text placeholder:text-text-secondary focus:border-primary focus:outline-none disabled:opacity-60"
+                />
+              )}
 
               <button
                 type="button"
