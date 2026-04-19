@@ -190,6 +190,92 @@ const spec = {
         },
       },
     },
+    "/api/comic/{id}/page/generate": {
+      post: {
+        summary: "Generate page image",
+        description: "Generates a single page image in supervised mode. Generates a character sheet on first call if not already created. Transitions status to 'generating'. Long-running — maxDuration 300s.",
+        tags: ["Generation"],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["pageNumber"],
+                properties: {
+                  pageNumber: { type: "integer", minimum: 1, example: 1 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Page generated", content: { "application/json": { schema: { type: "object", properties: { page: { type: "object" } } } } } },
+          "400": { description: "Validation or status error" },
+          "404": { description: "Comic not found" },
+          "500": { description: "Internal server error" },
+        },
+      },
+    },
+    "/api/comic/{id}/page/regenerate": {
+      post: {
+        summary: "Regenerate page image",
+        description: "Generates a new version of a page. Enforces max 3 regenerations (4 total versions). Auto-selects the new version. Optional feedback is appended as director's notes to the prompt. Long-running — maxDuration 300s.",
+        tags: ["Generation"],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["pageNumber"],
+                properties: {
+                  pageNumber: { type: "integer", minimum: 1, example: 1 },
+                  feedback: { type: "string", nullable: true, example: "Make the colours warmer and the character look more surprised" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Page regenerated", content: { "application/json": { schema: { type: "object", properties: { page: { type: "object" } } } } } },
+          "400": { description: "Validation, status, or limit error" },
+          "404": { description: "Comic not found" },
+          "500": { description: "Internal server error" },
+        },
+      },
+    },
+    "/api/comic/{id}/page/select": {
+      put: {
+        summary: "Select page version",
+        description: "Sets the selectedVersionIndex on a page. Transitions comic status to 'complete' if this is the last page.",
+        tags: ["Generation"],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["pageNumber", "versionIndex"],
+                properties: {
+                  pageNumber: { type: "integer", minimum: 1, example: 1 },
+                  versionIndex: { type: "integer", minimum: 0, example: 0 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Version selected", content: { "application/json": { schema: { type: "object", properties: { success: { type: "boolean" }, complete: { type: "boolean" } } } } } },
+          "400": { description: "Validation or status error" },
+          "404": { description: "Comic not found" },
+          "500": { description: "Internal server error" },
+        },
+      },
+    },
     "/api/comic/random-idea": {
       get: {
         summary: "Generate random idea",
