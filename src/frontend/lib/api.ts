@@ -303,35 +303,54 @@ async function mockCreateComic(payload: {
 
 async function mockGetComic(id: string): Promise<{ comic: Comic }> {
   await delay(500);
-  const isComplete = _mockCompletedComics.has(id);
+  const isAutoComplete = _mockCompletedComics.has(id);
+  const pageCount = 5;
+
+  // Collect pages generated in supervised mode
+  const supervisedPages = Array.from({ length: pageCount }, (_, i) => {
+    const versions = _mockPageVersions.get(`${id}-p${i + 1}`);
+    return versions ?? null;
+  });
+  const supervisedPageCount = supervisedPages.filter(Boolean).length;
+  const isComplete = isAutoComplete || supervisedPageCount === pageCount;
+
+  let pages: Comic["pages"] = [];
+  if (isAutoComplete) {
+    pages = Array.from({ length: pageCount }, (_, i) => ({
+      pageNumber: i + 1,
+      versions: [
+        {
+          imageUrl: `https://picsum.photos/seed/${id}-p${i + 1}/800/1200`,
+          generatedAt: new Date().toISOString(),
+        },
+      ],
+      selectedVersionIndex: 0,
+    }));
+  } else if (supervisedPageCount > 0) {
+    pages = supervisedPages
+      .map((versions, i) =>
+        versions ? { pageNumber: i + 1, versions, selectedVersionIndex: versions.length - 1 } : null
+      )
+      .filter((p): p is Comic["pages"][number] => p !== null);
+  }
+
   return {
     comic: {
       id,
       userId: null,
-      status: isComplete ? "complete" : "input",
+      status: isComplete ? "complete" : "generating",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       prompt: "A detective cat solves mysteries in a steampunk city",
       artStyle: "manga",
-      pageCount: 5,
+      pageCount,
       followUpQuestions: [
         { id: "q1", question: "Who is the main character and what drives them?" },
         { id: "q2", question: "What is the central conflict or challenge?" },
         { id: "q3", question: "What tone should the story have — lighthearted or serious?" },
       ],
-      pages: isComplete
-        ? Array.from({ length: 5 }, (_, i) => ({
-            pageNumber: i + 1,
-            versions: [
-              {
-                imageUrl: `https://picsum.photos/seed/${id}-p${i + 1}/800/1200`,
-                generatedAt: new Date().toISOString(),
-              },
-            ],
-            selectedVersionIndex: 0,
-          }))
-        : [],
-      currentPageIndex: isComplete ? 5 : 0,
+      pages,
+      currentPageIndex: supervisedPageCount > 0 ? supervisedPageCount : (isComplete ? pageCount : 0),
     },
   };
 }

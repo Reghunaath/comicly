@@ -634,3 +634,93 @@ describe("Regenerate flow", () => {
     ).toBeInTheDocument();
   });
 });
+
+// ---------------------------------------------------------------------------
+// 10. Edit mode — panel and dialogue fields
+// ---------------------------------------------------------------------------
+
+describe("Edit mode — panel and dialogue fields", () => {
+  it("updates panel description when edited and saved", async () => {
+    const { user } = setup();
+    await screen.findByRole("button", { name: /^edit$/i });
+    await user.click(screen.getByRole("button", { name: /^edit$/i }));
+
+    const descTextarea = screen.getByRole("textbox", {
+      name: /page 1 panel 1 description/i,
+    });
+    await user.clear(descTextarea);
+    await user.type(descTextarea, "New panel description");
+
+    await user.click(screen.getByRole("button", { name: /^done$/i }));
+
+    expect(screen.getByText("New panel description")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/wide shot of a foggy steampunk city/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it("updates panel caption when edited and saved", async () => {
+    const { user } = setup();
+    await screen.findByRole("button", { name: /^edit$/i });
+    await user.click(screen.getByRole("button", { name: /^edit$/i }));
+
+    const captionInput = screen.getByRole("textbox", {
+      name: /page 1 panel 1 caption/i,
+    });
+    await user.clear(captionInput);
+    await user.type(captionInput, "Updated caption");
+
+    await user.click(screen.getByRole("button", { name: /^done$/i }));
+
+    // Caption is rendered wrapped in typographic curly quotes: "Updated caption"
+    expect(
+      screen.getByText((content) => content.includes("Updated caption"))
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText((content) => content.includes("A city of secrets"))
+    ).not.toBeInTheDocument();
+  });
+
+  it("updates dialogue speaker and text when edited and saved", async () => {
+    const { user } = setup();
+    await screen.findByRole("button", { name: /^edit$/i });
+    await user.click(screen.getByRole("button", { name: /^edit$/i }));
+
+    const speakerInput = screen.getByRole("textbox", {
+      name: /page 1 panel 1 line 1 speaker/i,
+    });
+    await user.clear(speakerInput);
+    await user.type(speakerInput, "New Speaker");
+
+    const textInput = screen.getByRole("textbox", {
+      name: /page 1 panel 1 line 1 text/i,
+    });
+    await user.clear(textInput);
+    await user.type(textInput, "Brand new dialogue line");
+
+    await user.click(screen.getByRole("button", { name: /^done$/i }));
+
+    expect(screen.getByText(/new speaker/i)).toBeInTheDocument();
+    expect(screen.getByText(/brand new dialogue line/i)).toBeInTheDocument();
+    expect(screen.queryByText(/the city never sleeps/i)).not.toBeInTheDocument();
+  });
+
+  it("discards panel description edits when Cancel is clicked", async () => {
+    const { user } = setup();
+    await screen.findByRole("button", { name: /^edit$/i });
+    await user.click(screen.getByRole("button", { name: /^edit$/i }));
+
+    const descTextarea = screen.getByRole("textbox", {
+      name: /page 1 panel 1 description/i,
+    });
+    await user.clear(descTextarea);
+    await user.type(descTextarea, "Discarded description");
+
+    await user.click(screen.getByRole("button", { name: /^cancel$/i }));
+
+    expect(
+      screen.getByText(/wide shot of a foggy steampunk city/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Discarded description")).not.toBeInTheDocument();
+  });
+});
