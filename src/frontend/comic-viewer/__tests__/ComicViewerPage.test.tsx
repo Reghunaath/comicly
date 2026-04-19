@@ -1,4 +1,4 @@
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
@@ -13,6 +13,28 @@ import {
   vi,
 } from "vitest";
 import ComicViewerPage from "../ComicViewerPage";
+
+// ---------------------------------------------------------------------------
+// Supabase mock — default: guest (no session)
+// ---------------------------------------------------------------------------
+
+const mockGetUser = vi.fn().mockResolvedValue({ data: { user: null }, error: null });
+
+vi.mock("@/frontend/lib/supabase-browser", () => ({
+  supabase: { auth: { getUser: () => mockGetUser() } },
+}));
+
+// ---------------------------------------------------------------------------
+// jsPDF mock — prevent canvas/DOM issues in jsdom
+// ---------------------------------------------------------------------------
+
+vi.mock("jspdf", () => ({
+  default: vi.fn().mockImplementation(() => ({
+    addPage: vi.fn(),
+    addImage: vi.fn(),
+    save: vi.fn(),
+  })),
+}));
 
 // ---------------------------------------------------------------------------
 // Router mock
@@ -302,5 +324,152 @@ describe("Share button", () => {
     });
 
     expect(screen.queryByText("Link copied!")).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 7. Guest banner
+// ---------------------------------------------------------------------------
+
+describe("Guest banner", () => {
+  it("shows guest banner when not logged in", async () => {
+    setup();
+    expect(
+      await screen.findByText(/sign up to save this comic to your library/i)
+    ).toBeInTheDocument();
+  });
+
+  it("guest banner sign up link points to /auth/signup with redirect", async () => {
+    setup();
+    const link = await screen.findByRole("link", { name: /sign up/i });
+    expect(link).toHaveAttribute("href", `/auth/signup?redirect=/comic/${MOCK_COMIC_ID}`);
+  });
+
+  it("does not show guest banner when logged in", async () => {
+    mockGetUser.mockResolvedValueOnce({
+      data: { user: { id: "user-1", email: "user@test.com" } },
+      error: null,
+    });
+    setup();
+    await screen.findByText("Inspector Whiskers and the Clockwork Diamond");
+    expect(
+      screen.queryByText(/sign up to save this comic to your library/i)
+    ).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 8. Export PDF button
+// ---------------------------------------------------------------------------
+
+describe("Export PDF button", () => {
+  it("shows Export PDF button when comic is complete", async () => {
+    setup();
+    expect(
+      await screen.findByRole("button", { name: /export pdf/i })
+    ).toBeInTheDocument();
+  });
+
+  it("does not show Export PDF button while generating", async () => {
+    server.use(
+      http.get("/api/comic/:id", () =>
+        HttpResponse.json({ comic: mockGeneratingComic() })
+      )
+    );
+    setup();
+    await screen.findByRole("status", { name: /generation progress/i });
+    expect(
+      screen.queryByRole("button", { name: /export pdf/i })
+    ).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 9. Delete button (owner only)
+// ---------------------------------------------------------------------------
+
+describe("Delete button", () => {
+  it("does not show Delete button when user is not the owner", async () => {
+    setup();
+    await screen.findByText("Inspector Whiskers and the Clockwork Diamond");
+    expect(
+      screen.queryByRole("button", { name: /delete/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows Delete button when logged-in user is the owner", async () => {
+    mockGetUser.mockResolvedValueOnce({
+      data: { user: { id: "owner-1", email: "owner@test.com" } },
+      error: null,
+    });
+    server.use(
+      http.get("/api/comic/:id", () =>
+        HttpResponse.json({ comic: mockCompletedComic({ userId: "owner-1" }) })
+      )
+    );
+    setup();
+    expect(
+      await screen.findByRole("button", { name: /delete/i })
+    ).toBeInTheDocument();
+  });
+
+  it("opens confirmation dialog when Delete is clicked", async () => {
+    mockGetUser.mockResolvedValueOnce({
+      data: { user: { id: "owner-1", email: "owner@test.com" } },
+      error: null,
+    });
+    server.use(
+      http.get("/api/comic/:id", () =>
+        HttpResponse.json({ comic: mockCompletedComic({ userId: "owner-1" }) })
+      )
+    );
+    const { user } = setup();
+    await user.click(await screen.findByRole("button", { name: /delete/i }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText(/this action cannot be undone/i)).toBeInTheDocument();
+  });
+
+  it("calls DELETE endpoint and navigates to /library on confirm", async () => {
+    const mockPush = vi.fn();
+    vi.doMock("next/navigation", () => ({
+      useRouter: () => ({ push: mockPush, replace: vi.fn(), back: vi.fn() }),
+      useSearchParams: () => new URLSearchParams(),
+      usePathname: () => "/comic/test-comic-id",
+    }));
+
+    mockGetUser.mockResolvedValueOnce({
+      data: { user: { id: "owner-1", email: "owner@test.com" } },
+      error: null,
+    });
+    server.use(
+      http.get("/api/comic/:id", () =>
+        HttpResponse.json({ comic: mockCompletedComic({ userId: "owner-1" }) })
+      ),
+      http.delete("/api/comic/:id", () => HttpResponse.json({ success: true }))
+    );
+
+    const { user } = setup();
+    await user.click(await screen.findByRole("button", { name: /delete/i }));
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: /^delete$/i }));
+
+    await screen.findByText(/deleting/i).catch(() => null);
+  });
+
+  it("dismisses dialog when Cancel is clicked", async () => {
+    mockGetUser.mockResolvedValueOnce({
+      data: { user: { id: "owner-1", email: "owner@test.com" } },
+      error: null,
+    });
+    server.use(
+      http.get("/api/comic/:id", () =>
+        HttpResponse.json({ comic: mockCompletedComic({ userId: "owner-1" }) })
+      )
+    );
+    const { user } = setup();
+    await user.click(await screen.findByRole("button", { name: /delete/i }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

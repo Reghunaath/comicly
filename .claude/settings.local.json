@@ -4,14 +4,15 @@
       "mcp__playwright__browser_snapshot",
       "Bash(npm run *)",
       "mcp__playwright__browser_navigate",
-      "mcp__playwright__browser_click"
+      "mcp__playwright__browser_click",
       "mcp__github__get_me",
       "Bash(git remote *)",
       "mcp__github__issue_write",
       "Bash(git checkout *)",
       "Bash(npm run *)",
       "Bash(npx eslint *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "mcp__playwright__browser_take_screenshot"
     ]
   }
 }

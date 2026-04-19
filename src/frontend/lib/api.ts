@@ -5,7 +5,7 @@
  * .env.local to use mock responses while Reghu's backend is in progress.
  */
 
-import type { ArtStylePreset, Comic, GenerationMode, Script } from "./types";
+import type { ArtStylePreset, Comic, ComicSummary, GenerationMode, Script } from "./types";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_API === "true";
 
@@ -136,6 +136,33 @@ export async function generateAllPages(id: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Library endpoints (#21)
+// ---------------------------------------------------------------------------
+
+export interface LibraryResponse {
+  comics: ComicSummary[];
+}
+
+export async function getLibraryComics(): Promise<LibraryResponse> {
+  if (USE_MOCK) return mockGetLibraryComics();
+  const res = await fetch("/api/comic?library=true");
+  if (res.status === 401) throw new Error("Authentication required");
+  if (!res.ok) throw new Error("Failed to load library");
+  return res.json();
+}
+
+export async function deleteComic(id: string): Promise<void> {
+  if (USE_MOCK) {
+    await delay(400);
+    return;
+  }
+  const res = await fetch(`/api/comic/${id}`, { method: "DELETE" });
+  if (res.status === 401) throw new Error("Authentication required");
+  if (res.status === 403) throw new Error("You do not own this comic");
+  if (!res.ok) throw new Error("Failed to delete comic");
+}
+
+// ---------------------------------------------------------------------------
 // Supervised Mode endpoints (#20)
 // ---------------------------------------------------------------------------
 
@@ -197,6 +224,54 @@ export async function selectPageVersion(
 // Tracks which comic IDs have completed mock generation (for polling)
 const _mockCompletedComics = new Set<string>();
 
+async function mockGetLibraryComics(): Promise<LibraryResponse> {
+  await delay(600);
+  return {
+    comics: [
+      {
+        id: "mock-lib-1",
+        status: "complete",
+        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+        title: "Inspector Whiskers and the Clockwork Diamond",
+        artStyle: "manga",
+        pageCount: 5,
+        thumbnailUrl: "https://picsum.photos/seed/mock-lib-1/400/600",
+      },
+      {
+        id: "mock-lib-2",
+        status: "generating",
+        createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+        updatedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+        title: "The Last Bakery on Mars",
+        artStyle: "watercolor_storybook",
+        pageCount: 8,
+        thumbnailUrl: null,
+      },
+      {
+        id: "mock-lib-3",
+        status: "script_draft",
+        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        updatedAt: new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString(),
+        title: "Rival Chefs at the End of the World",
+        artStyle: "western_comic",
+        pageCount: 6,
+        thumbnailUrl: null,
+      },
+      {
+        id: "mock-lib-4",
+        status: "input",
+        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        title: null,
+        artStyle: "minimalist_flat",
+        pageCount: 4,
+        thumbnailUrl: null,
+      },
+    ],
+  };
+}
+
 async function mockGetRandomIdea(): Promise<RandomIdeaResponse> {
   await delay(400);
   const ideas = [
@@ -228,6 +303,35 @@ async function mockCreateComic(payload: {
 
 async function mockGetComic(id: string): Promise<{ comic: Comic }> {
   await delay(500);
+  const isAutoComplete = _mockCompletedComics.has(id);
+  const pageCount = 5;
+
+  // Collect pages generated in supervised mode
+  const supervisedPages = Array.from({ length: pageCount }, (_, i) => {
+    const versions = _mockPageVersions.get(`${id}-p${i + 1}`);
+    return versions ?? null;
+  });
+  const supervisedPageCount = supervisedPages.filter(Boolean).length;
+  const isComplete = isAutoComplete || supervisedPageCount === pageCount;
+
+  let pages: Comic["pages"] = [];
+  if (isAutoComplete) {
+    pages = Array.from({ length: pageCount }, (_, i) => ({
+      pageNumber: i + 1,
+      versions: [
+        {
+          imageUrl: `https://picsum.photos/seed/${id}-p${i + 1}/800/1200`,
+          generatedAt: new Date().toISOString(),
+        },
+      ],
+      selectedVersionIndex: 0,
+    }));
+  } else if (supervisedPageCount > 0) {
+    pages = supervisedPages
+      .map((versions, i) =>
+        versions ? { pageNumber: i + 1, versions, selectedVersionIndex: versions.length - 1 } : null
+      )
+      .filter((p): p is Comic["pages"][number] => p !== null);
   const pageCount = 5;
 
   const allPagesSupervised = Array.from({ length: pageCount }, (_, i) =>
@@ -254,7 +358,7 @@ async function mockGetComic(id: string): Promise<{ comic: Comic }> {
     comic: {
       id,
       userId: null,
-      status: isComplete ? "complete" : "input",
+      status: isComplete ? "complete" : "generating",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       prompt: "A detective cat solves mysteries in a steampunk city",
@@ -266,6 +370,7 @@ async function mockGetComic(id: string): Promise<{ comic: Comic }> {
         { id: "q3", question: "What tone should the story have — lighthearted or serious?" },
       ],
       pages,
+      currentPageIndex: supervisedPageCount > 0 ? supervisedPageCount : (isComplete ? pageCount : 0),
       currentPageIndex: isComplete ? pageCount : 0,
     },
   };

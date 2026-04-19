@@ -2,24 +2,37 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getComic } from "@/frontend/lib/api";
+import { useRouter } from "next/navigation";
+import { getComic, deleteComic } from "@/frontend/lib/api";
+import { supabase } from "@/frontend/lib/supabase-browser";
 import type { Comic } from "@/frontend/lib/types";
+import type { User } from "@supabase/supabase-js";
+import jsPDF from "jspdf";
 
 type Phase = "loading" | "not_found" | "generating" | "complete" | "error";
+type DeletePhase = "idle" | "confirming" | "deleting" | "error";
 
 export default function ComicViewerPage({ comicId }: { comicId: string }) {
+  const router = useRouter();
   const [phase, setPhase] = useState<Phase>("loading");
   const [comic, setComic] = useState<Comic | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
+  const [deletePhase, setDeletePhase] = useState<DeletePhase>("idle");
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   // -------------------------------------------------------------------------
-  // On mount: fetch comic
+  // On mount: fetch comic + auth state in parallel
   // -------------------------------------------------------------------------
 
   useEffect(() => {
-    getComic(comicId)
-      .then(({ comic: loaded }) => {
+    Promise.all([
+      getComic(comicId),
+      supabase.auth.getUser(),
+    ])
+      .then(([{ comic: loaded }, { data: { user } }]) => {
         setComic(loaded);
+        setCurrentUser(user);
         setPhase(loaded.status === "complete" ? "complete" : "generating");
       })
       .catch((err: unknown) => {
@@ -62,6 +75,38 @@ export default function ComicViewerPage({ comicId }: { comicId: string }) {
     navigator.clipboard?.writeText(window.location.href)?.catch(() => undefined);
     setToastVisible(true);
     setTimeout(() => setToastVisible(false), 3000);
+  }
+
+  // -------------------------------------------------------------------------
+  // PDF export handler
+  // -------------------------------------------------------------------------
+
+  async function handleExportPdf() {
+    if (!comic || exportingPdf) return;
+    setExportingPdf(true);
+    try {
+      await exportPDF(comic);
+    } catch {
+      // On failure, fall back to server-side export
+      window.open(`/api/comic/${comicId}/export/pdf`, "_blank");
+    } finally {
+      setExportingPdf(false);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Delete handlers
+  // -------------------------------------------------------------------------
+
+  async function handleConfirmDelete() {
+    if (!comic) return;
+    setDeletePhase("deleting");
+    try {
+      await deleteComic(comic.id);
+      router.push("/library");
+    } catch {
+      setDeletePhase("error");
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -129,6 +174,8 @@ export default function ComicViewerPage({ comicId }: { comicId: string }) {
   const title = comic?.script?.title ?? "Your Comic";
   const pages = comic?.pages ?? [];
   const totalPages = comic?.pageCount ?? pages.length;
+  const isOwner = !!(currentUser && comic?.userId && comic.userId === currentUser.id);
+  const isGuest = currentUser === null;
 
   return (
     <main className="flex-1 bg-background">
@@ -144,24 +191,103 @@ export default function ComicViewerPage({ comicId }: { comicId: string }) {
         </div>
       )}
 
+      {/* ── Delete confirmation dialog ─────────────────────────────────────── */}
+      {deletePhase === "confirming" || deletePhase === "deleting" || deletePhase === "error" ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-dialog-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+        >
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-surface px-6 py-6">
+            <p id="delete-dialog-title" className="mb-2 text-base font-semibold text-text">
+              Delete this comic?
+            </p>
+            {deletePhase === "error" ? (
+              <p className="mb-5 text-sm text-error">
+                Something went wrong. Please try again.
+              </p>
+            ) : (
+              <p className="mb-5 text-sm text-text-secondary">
+                This action cannot be undone. The comic and all its pages will be permanently removed.
+              </p>
+            )}
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                disabled={deletePhase === "deleting"}
+                onClick={() => setDeletePhase("idle")}
+                className="rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-text transition-colors hover:bg-surface-alt disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deletePhase === "deleting"}
+                onClick={handleConfirmDelete}
+                className="rounded-lg bg-error px-4 py-2 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-50"
+              >
+                {deletePhase === "deleting" ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
 
         {/* ── Title bar ──────────────────────────────────────────────────── */}
-        <header className="mb-8 flex items-start justify-between gap-4">
+        <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-text-secondary">
               Comic
             </p>
             <h1 className="text-2xl font-bold text-text">{title}</h1>
           </div>
-          <button
-            type="button"
-            onClick={handleShare}
-            className="shrink-0 rounded-xl border border-border bg-surface px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-surface-alt"
-          >
-            Share
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {phase === "complete" && (
+              <button
+                type="button"
+                onClick={handleExportPdf}
+                disabled={exportingPdf}
+                className="rounded-xl border border-border bg-surface px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-surface-alt disabled:opacity-50"
+              >
+                {exportingPdf ? "Exporting…" : "Export PDF"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleShare}
+              className="rounded-xl border border-border bg-surface px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-surface-alt"
+            >
+              Share
+            </button>
+            {isOwner && (
+              <button
+                type="button"
+                onClick={() => setDeletePhase("confirming")}
+                className="rounded-xl border border-border bg-surface px-4 py-2 text-sm font-semibold text-error transition-colors hover:bg-surface-alt"
+              >
+                Delete
+              </button>
+            )}
+          </div>
         </header>
+
+        {/* ── Guest banner ───────────────────────────────────────────────── */}
+        {isGuest && (
+          <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-5 py-4">
+            <p className="text-sm text-text-secondary">
+              Sign up to save this comic to your library.
+            </p>
+            <Link
+              href={`/auth/signup?redirect=/comic/${comicId}`}
+              className="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-text-inverse transition-colors hover:bg-primary-hover"
+            >
+              Sign up
+            </Link>
+          </div>
+        )}
 
         {/* ── Generating progress banner ─────────────────────────────────── */}
         {phase === "generating" && (
@@ -213,7 +339,41 @@ export default function ComicViewerPage({ comicId }: { comicId: string }) {
   );
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── PDF export ────────────────────────────────────────────────────────────────
+
+async function exportPDF(comic: Comic) {
+  const pdf = new jsPDF({ orientation: "portrait", unit: "px", format: [800, 1200] });
+
+  for (let i = 0; i < comic.pages.length; i++) {
+    const page = comic.pages[i];
+    const version = page.versions[page.selectedVersionIndex];
+    if (!version) continue;
+    if (i > 0) pdf.addPage();
+    const dataUrl = await loadImageAsDataUrl(version.imageUrl);
+    pdf.addImage(dataUrl, "PNG", 0, 0, 800, 1200);
+  }
+
+  pdf.save(`${comic.script?.title ?? "comic"}.pdf`);
+}
+
+function loadImageAsDataUrl(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function Spinner({
   className = "",
