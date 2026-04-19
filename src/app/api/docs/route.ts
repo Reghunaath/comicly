@@ -187,6 +187,15 @@ const spec = {
         },
       },
     },
+    "/api/comic/{id}/export/pdf": {
+      get: {
+        summary: "Export comic as PDF",
+        description: "Generates and returns a downloadable PDF of the comic. One full-page image per comic page. Comic must have status 'complete'.",
+        tags: ["Export"],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+        responses: {
+          "200": { description: "PDF file", content: { "application/pdf": { schema: { type: "string", format: "binary" } } } },
+          "400": { description: "Comic is not complete" },
     "/api/library": {
       get: {
         summary: "Get user library",
