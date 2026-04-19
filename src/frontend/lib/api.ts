@@ -355,6 +355,8 @@ async function mockRegeneratePage(
   const versions = [...existing, newVersion];
   _mockPageVersions.set(key, versions);
   return { page: { pageNumber, versions, selectedVersionIndex: versions.length - 1 } };
+}
+
 async function mockRegenerateScript(feedback: string): Promise<{ script: Script }> {
   void feedback;
   await delay(1200);

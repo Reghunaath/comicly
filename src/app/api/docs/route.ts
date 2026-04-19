@@ -8,6 +8,16 @@ const spec = {
     description: "Backend API for the Comicly comic generation app",
   },
   servers: [{ url: process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000" }],
+  components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "JWT",
+        description: "Supabase JWT. Get it from browser DevTools → Application → Local Storage → sb-<project>-auth-token → access_token",
+      },
+    },
+  },
   paths: {
     "/api/comic": {
       post: {
@@ -60,19 +70,6 @@ const spec = {
             },
           },
           "400": { description: "Validation error", content: { "application/json": { schema: { type: "object", properties: { error: { type: "string" } } } } } },
-          "500": { description: "Internal server error" },
-        },
-      },
-    },
-    "/api/comic/{id}": {
-      get: {
-        summary: "Get comic",
-        description: "Returns the full comic object. No auth required.",
-        tags: ["Comic"],
-        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
-        responses: {
-          "200": { description: "Comic object", content: { "application/json": { schema: { type: "object", properties: { comic: { type: "object" } } } } } },
-          "404": { description: "Comic not found" },
           "500": { description: "Internal server error" },
         },
       },
@@ -190,6 +187,27 @@ const spec = {
         },
       },
     },
+    "/api/library": {
+      get: {
+        summary: "Get user library",
+        description: "Returns all comics belonging to the authenticated user, ordered by creation date descending. Requires authentication.",
+        tags: ["Library"],
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": {
+            description: "User's comics",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    comics: { type: "array", items: { type: "object" } },
+                  },
+                },
+              },
+            },
+          },
+          "401": { description: "Authentication required" },
     "/api/comic/{id}/page/generate": {
       post: {
         summary: "Generate page image",
@@ -218,6 +236,14 @@ const spec = {
         },
       },
     },
+    "/api/comic/{id}": {
+      get: {
+        summary: "Get comic",
+        description: "Returns the full comic object. No auth required.",
+        tags: ["Comic"],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+        responses: {
+          "200": { description: "Comic object", content: { "application/json": { schema: { type: "object", properties: { comic: { type: "object" } } } } } },
     "/api/comic/{id}/page/regenerate": {
       post: {
         summary: "Regenerate page image",
@@ -246,6 +272,16 @@ const spec = {
           "500": { description: "Internal server error" },
         },
       },
+      delete: {
+        summary: "Delete comic",
+        description: "Deletes a comic and all its associated storage images. Requires authentication and ownership.",
+        tags: ["Library"],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+        responses: {
+          "200": { description: "Comic deleted", content: { "application/json": { schema: { type: "object", properties: { success: { type: "boolean" } } } } } },
+          "401": { description: "Authentication required" },
+          "403": { description: "Not the comic owner" },
     },
     "/api/comic/{id}/page/select": {
       put: {

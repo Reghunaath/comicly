@@ -42,6 +42,6 @@ nano-banana-requests.log
 *.tsbuildinfo
 next-env.d.ts
 .playwright-mcp
-docs
+/docs
 
 /references
