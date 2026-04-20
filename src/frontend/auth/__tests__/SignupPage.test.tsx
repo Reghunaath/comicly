@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SignupPage from "../SignupPage";
@@ -194,13 +194,13 @@ describe("Successful Submit", () => {
     );
   });
 
-  it("shows a 'check your email' confirmation message instead of redirecting", async () => {
+  it("redirects to the redirect param after successful signup", async () => {
     mockSignUp.mockResolvedValue({ data: { user: {} }, error: null });
+    mockSearchParams = new URLSearchParams("redirect=/comic/abc");
     const { user } = setup();
     await fillAndSubmit(user);
 
-    expect(await screen.findByText(/check your email/i)).toBeInTheDocument();
-    expect(mockPush).not.toHaveBeenCalled();
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/comic/abc"));
   });
 });
 

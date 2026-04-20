@@ -9,6 +9,7 @@ import AuthField from "./AuthField";
 import GoogleOAuthSection from "./GoogleOAuthSection";
 
 export default function SignupPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = safeRedirect(searchParams.get("redirect"));
   const router = useRouter();

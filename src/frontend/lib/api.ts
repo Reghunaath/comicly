@@ -157,7 +157,7 @@ export interface LibraryResponse {
 
 export async function getLibraryComics(): Promise<LibraryResponse> {
   if (USE_MOCK) return mockGetLibraryComics();
-  const res = await fetch("/api/comic?library=true");
+  const res = await fetch("/api/library");
   if (res.status === 401) throw new Error("Authentication required");
   if (!res.ok) throw new Error("Failed to load library");
   return res.json();
@@ -172,6 +172,18 @@ export async function deleteComic(id: string): Promise<void> {
   if (res.status === 401) throw new Error("Authentication required");
   if (res.status === 403) throw new Error("You do not own this comic");
   if (!res.ok) throw new Error("Failed to delete comic");
+}
+
+export async function claimComic(id: string): Promise<{ success: boolean }> {
+  if (USE_MOCK) {
+    await delay(300);
+    return { success: true };
+  }
+  const res = await fetch(`/api/comic/${id}/claim`, { method: "PUT" });
+  if (res.status === 401) throw new Error("Authentication required");
+  if (res.status === 403) throw new Error("Comic already owned by another user");
+  if (!res.ok) throw new Error("Failed to claim comic");
+  return res.json();
 }
 
 // ---------------------------------------------------------------------------
