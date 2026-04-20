@@ -1,42 +1,18 @@
-import type { Script, GenerationMode } from "@/backend/lib/types";
+import type { Script } from "@/backend/lib/types";
 import { getComic, saveComic } from "@/backend/lib/db";
 import { validateScript } from "@/backend/lib/ai/script-generator";
-
-interface ApproveComicInput {
-  script: Script;
-  generationMode: GenerationMode;
-}
+import { parseOrThrow, ApproveComicSchema } from "@/backend/lib/validation";
 
 interface ApproveComicResult {
   success: true;
-}
-
-const VALID_MODES: GenerationMode[] = ["supervised", "automated"];
-
-function validate(body: unknown): ApproveComicInput {
-  if (!body || typeof body !== "object") {
-    throw new Error("INVALID_INPUT: Request body is required");
-  }
-  const { script, generationMode } = body as Record<string, unknown>;
-
-  if (!script || typeof script !== "object") {
-    throw new Error("INVALID_INPUT: script is required");
-  }
-  if (!generationMode || !VALID_MODES.includes(generationMode as GenerationMode)) {
-    throw new Error("INVALID_INPUT: generationMode must be 'supervised' or 'automated'");
-  }
-
-  return {
-    script: script as Script,
-    generationMode: generationMode as GenerationMode,
-  };
 }
 
 export async function approveComic(
   id: string,
   body: unknown
 ): Promise<ApproveComicResult> {
-  const input = validate(body);
+  const raw = parseOrThrow(ApproveComicSchema, body);
+  const input = { script: raw.script as unknown as Script, generationMode: raw.generationMode };
 
   const comic = await getComic(id);
   if (!comic) throw new Error("NOT_FOUND: Comic not found");
