@@ -319,7 +319,6 @@ async function mockGetComic(id: string): Promise<{ comic: Comic }> {
   const isAutoComplete = _mockCompletedComics.has(id);
   const pageCount = 5;
 
-  // Collect pages generated in supervised mode
   const supervisedPages = Array.from({ length: pageCount }, (_, i) => {
     const versions = _mockPageVersions.get(`${id}-p${i + 1}`);
     return versions ?? null;
