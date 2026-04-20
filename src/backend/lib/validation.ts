@@ -43,10 +43,39 @@ export const RegenerateScriptSchema = z.object({
     .max(2000, "feedback must be at most 2000 characters"),
 });
 
+const DialogueLineSchema = z.object({
+  speaker: z.string(),
+  text: z.string(),
+});
+
+const ScriptPanelSchema = z.object({
+  panelNumber: z.number().int(),
+  description: z.string(),
+  dialogue: z.array(DialogueLineSchema),
+  caption: z.string().optional(),
+});
+
+const ScriptPageSchema = z.object({
+  pageNumber: z.number().int(),
+  panels: z.array(ScriptPanelSchema),
+});
+
+const CharacterSchema = z.object({
+  name: z.string(),
+  appearance: z.string(),
+  clothing: z.string(),
+  personality: z.string(),
+});
+
+export const ScriptSchema = z.object({
+  title: z.string(),
+  synopsis: z.string(),
+  characters: z.array(CharacterSchema),
+  pages: z.array(ScriptPageSchema),
+});
+
 export const ApproveComicSchema = z.object({
-  script: z.record(z.string(), z.unknown()).refine((v) => v !== null && typeof v === "object", {
-    message: "script must be an object",
-  }),
+  script: ScriptSchema,
   generationMode: z.enum(["supervised", "automated"], {
     error: "generationMode must be 'supervised' or 'automated'",
   }),

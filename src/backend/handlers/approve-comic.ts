@@ -1,4 +1,3 @@
-import type { Script } from "@/backend/lib/types";
 import { getComic, saveComic } from "@/backend/lib/db";
 import { validateScript } from "@/backend/lib/ai/script-generator";
 import { parseOrThrow, ApproveComicSchema } from "@/backend/lib/validation";
@@ -11,8 +10,7 @@ export async function approveComic(
   id: string,
   body: unknown
 ): Promise<ApproveComicResult> {
-  const raw = parseOrThrow(ApproveComicSchema, body);
-  const input = { script: raw.script as unknown as Script, generationMode: raw.generationMode };
+  const input = parseOrThrow(ApproveComicSchema, body);
 
   const comic = await getComic(id);
   if (!comic) throw new Error("NOT_FOUND: Comic not found");
