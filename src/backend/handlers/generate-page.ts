@@ -3,20 +3,10 @@ import { getComic, saveComic, getOrCreatePage, addPageVersion } from "@/backend/
 import { uploadImage, uploadCharacterSheet } from "@/backend/lib/supabase/storage";
 import { buildCharacterSheetPrompt, buildPageImagePrompt } from "@/backend/lib/ai/prompts";
 import { generatePageImage, generateCharacterSheet } from "@/backend/lib/ai/image-generator";
+import { parseOrThrow, PageGenerateSchema } from "@/backend/lib/validation";
 
 interface GeneratePageResult {
   page: Page;
-}
-
-function validateBody(body: unknown): { pageNumber: number } {
-  if (!body || typeof body !== "object") {
-    throw new Error("INVALID_INPUT: Request body is required");
-  }
-  const { pageNumber } = body as Record<string, unknown>;
-  if (typeof pageNumber !== "number" || !Number.isInteger(pageNumber) || pageNumber < 1) {
-    throw new Error("INVALID_INPUT: pageNumber must be a positive integer");
-  }
-  return { pageNumber };
 }
 
 async function fetchBuffer(url: string): Promise<Buffer> {
@@ -26,7 +16,7 @@ async function fetchBuffer(url: string): Promise<Buffer> {
 }
 
 export async function generatePage(id: string, body: unknown): Promise<GeneratePageResult> {
-  const { pageNumber } = validateBody(body);
+  const { pageNumber } = parseOrThrow(PageGenerateSchema, body);
 
   const comic = await getComic(id);
   if (!comic) throw new Error("NOT_FOUND: Comic not found");

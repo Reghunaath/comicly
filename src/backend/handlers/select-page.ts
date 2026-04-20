@@ -1,26 +1,13 @@
 import { getComic, saveComic, selectPageVersion } from "@/backend/lib/db";
+import { parseOrThrow, PageSelectSchema } from "@/backend/lib/validation";
 
 interface SelectPageResult {
   success: boolean;
   complete: boolean;
 }
 
-function validateBody(body: unknown): { pageNumber: number; versionIndex: number } {
-  if (!body || typeof body !== "object") {
-    throw new Error("INVALID_INPUT: Request body is required");
-  }
-  const { pageNumber, versionIndex } = body as Record<string, unknown>;
-  if (typeof pageNumber !== "number" || !Number.isInteger(pageNumber) || pageNumber < 1) {
-    throw new Error("INVALID_INPUT: pageNumber must be a positive integer");
-  }
-  if (typeof versionIndex !== "number" || !Number.isInteger(versionIndex) || versionIndex < 0) {
-    throw new Error("INVALID_INPUT: versionIndex must be a non-negative integer");
-  }
-  return { pageNumber, versionIndex };
-}
-
 export async function selectPage(id: string, body: unknown): Promise<SelectPageResult> {
-  const { pageNumber, versionIndex } = validateBody(body);
+  const { pageNumber, versionIndex } = parseOrThrow(PageSelectSchema, body);
 
   const comic = await getComic(id);
   if (!comic) throw new Error("NOT_FOUND: Comic not found");

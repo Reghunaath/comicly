@@ -3,31 +3,12 @@ import { getComic, getOrCreatePage, addPageVersion, selectPageVersion } from "@/
 import { uploadImage } from "@/backend/lib/supabase/storage";
 import { buildPageImagePrompt } from "@/backend/lib/ai/prompts";
 import { generatePageImage } from "@/backend/lib/ai/image-generator";
+import { parseOrThrow, PageRegenerateSchema } from "@/backend/lib/validation";
 
 const MAX_VERSIONS = 4;
 
 interface RegeneratePageResult {
   page: Page;
-}
-
-interface ValidatedBody {
-  pageNumber: number;
-  feedback?: string;
-}
-
-function validateBody(body: unknown): ValidatedBody {
-  if (!body || typeof body !== "object") {
-    throw new Error("INVALID_INPUT: Request body is required");
-  }
-  const { pageNumber, feedback } = body as Record<string, unknown>;
-  if (typeof pageNumber !== "number" || !Number.isInteger(pageNumber) || pageNumber < 1) {
-    throw new Error("INVALID_INPUT: pageNumber must be a positive integer");
-  }
-  if (feedback !== undefined && typeof feedback !== "string") {
-    throw new Error("INVALID_INPUT: feedback must be a string");
-  }
-  const trimmed = typeof feedback === "string" ? feedback.trim() : undefined;
-  return { pageNumber, feedback: trimmed || undefined };
 }
 
 async function fetchBuffer(url: string): Promise<Buffer> {
@@ -40,7 +21,9 @@ export async function regeneratePage(
   id: string,
   body: unknown
 ): Promise<RegeneratePageResult> {
-  const { pageNumber, feedback } = validateBody(body);
+  const parsed = parseOrThrow(PageRegenerateSchema, body);
+  const pageNumber = parsed.pageNumber;
+  const feedback = typeof parsed.feedback === "string" ? parsed.feedback.trim() || undefined : undefined;
 
   const comic = await getComic(id);
   if (!comic) throw new Error("NOT_FOUND: Comic not found");

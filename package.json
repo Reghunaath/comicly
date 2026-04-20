@@ -20,7 +20,8 @@
     "pdf-lib": "^1.17.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "swagger-ui-react": "^5.32.4"
+    "swagger-ui-react": "^5.32.4",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
