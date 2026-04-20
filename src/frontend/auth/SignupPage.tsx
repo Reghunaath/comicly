@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { supabase } from "@/frontend/lib/supabase-browser";
 import { safeRedirect } from "@/frontend/lib/auth";
@@ -9,6 +9,7 @@ import AuthField from "./AuthField";
 import GoogleOAuthSection from "./GoogleOAuthSection";
 
 export default function SignupPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = safeRedirect(searchParams.get("redirect"));
 
@@ -20,7 +21,6 @@ export default function SignupPage() {
   }>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
 
   function validate() {
     const errors: { email?: string; password?: string } = {};
@@ -59,7 +59,7 @@ export default function SignupPage() {
       setError(authError.message);
       return;
     }
-    setShowConfirmation(true);
+    router.push(redirect);
   }
 
   async function handleOAuth() {
@@ -69,26 +69,6 @@ export default function SignupPage() {
         redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/auth/callback?redirect=${encodeURIComponent(redirect)}`,
       },
     });
-  }
-
-  if (showConfirmation) {
-    return (
-      <main className="flex min-h-screen items-center justify-center px-4">
-        <div className="w-full max-w-sm text-center">
-          <h1 className="mb-3 text-2xl font-bold text-text">Check your email</h1>
-          <p className="mb-6 text-sm text-text-secondary">
-            We sent a confirmation link to <strong>{email}</strong>. Click it to
-            activate your account.
-          </p>
-          <Link
-            href="/auth/login"
-            className="text-sm font-medium text-primary hover:underline"
-          >
-            Back to log in
-          </Link>
-        </div>
-      </main>
-    );
   }
 
   return (
