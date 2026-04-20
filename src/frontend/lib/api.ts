@@ -145,7 +145,7 @@ export interface LibraryResponse {
 
 export async function getLibraryComics(): Promise<LibraryResponse> {
   if (USE_MOCK) return mockGetLibraryComics();
-  const res = await fetch("/api/comic?library=true");
+  const res = await fetch("/api/library");
   if (res.status === 401) throw new Error("Authentication required");
   if (!res.ok) throw new Error("Failed to load library");
   return res.json();
