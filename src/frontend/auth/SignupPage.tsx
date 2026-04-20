@@ -21,6 +21,7 @@ export default function SignupPage() {
   }>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
 
   function validate() {
     const errors: { email?: string; password?: string } = {};
@@ -59,7 +60,7 @@ export default function SignupPage() {
       setError(authError.message);
       return;
     }
-    router.push(redirect);
+    setConfirmationSent(true);
   }
 
   async function handleOAuth() {
@@ -69,6 +70,19 @@ export default function SignupPage() {
         redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/auth/callback?redirect=${encodeURIComponent(redirect)}`,
       },
     });
+  }
+
+  if (confirmationSent) {
+    return (
+      <main className="flex min-h-screen items-center justify-center px-4">
+        <div className="w-full max-w-sm text-center">
+          <h1 className="mb-4 text-2xl font-bold text-text">Check your email</h1>
+          <p className="text-sm text-text-secondary">
+            We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account.
+          </p>
+        </div>
+      </main>
+    );
   }
 
   return (
