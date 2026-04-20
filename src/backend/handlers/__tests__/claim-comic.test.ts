@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const mockGetRequiredUser = vi.fn();
-const mockGetComic = vi.fn();
-const mockClaimComicDb = vi.fn();
+const { mockGetRequiredUser, mockGetComic, mockClaimComicDb } = vi.hoisted(() => ({
+  mockGetRequiredUser: vi.fn(),
+  mockGetComic: vi.fn(),
+  mockClaimComicDb: vi.fn(),
+}));
 
 vi.mock("@/backend/lib/supabase/middleware", () => ({
   getRequiredUser: mockGetRequiredUser,

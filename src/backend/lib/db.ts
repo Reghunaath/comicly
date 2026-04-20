@@ -222,6 +222,15 @@ export async function deleteComic(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function claimComic(id: string, userId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("comics")
+    .update({ user_id: userId })
+    .eq("id", id)
+    .is("user_id", null);
+  if (error) throw error;
+}
+
 export async function getOrCreatePage(
   comicId: string,
   pageNumber: number

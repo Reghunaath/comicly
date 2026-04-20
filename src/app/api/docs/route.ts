@@ -187,6 +187,33 @@ const spec = {
         },
       },
     },
+    "/api/comic/{id}": {
+      get: {
+        summary: "Get comic",
+        description: "Returns the full comic object. No auth required.",
+        tags: ["Comic"],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+        responses: {
+          "200": { description: "Comic object", content: { "application/json": { schema: { type: "object", properties: { comic: { type: "object" } } } } } },
+          "404": { description: "Comic not found" },
+          "500": { description: "Internal server error" },
+        },
+      },
+      delete: {
+        summary: "Delete comic",
+        description: "Deletes a comic and all its associated storage images. Requires authentication and ownership.",
+        tags: ["Library"],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+        responses: {
+          "200": { description: "Comic deleted", content: { "application/json": { schema: { type: "object", properties: { success: { type: "boolean" } } } } } },
+          "401": { description: "Authentication required" },
+          "403": { description: "Not the comic owner" },
+          "404": { description: "Comic not found" },
+          "500": { description: "Internal server error" },
+        },
+      },
+    },
     "/api/comic/{id}/export/pdf": {
       get: {
         summary: "Export comic as PDF",
@@ -196,6 +223,11 @@ const spec = {
         responses: {
           "200": { description: "PDF file", content: { "application/pdf": { schema: { type: "string", format: "binary" } } } },
           "400": { description: "Comic is not complete" },
+          "404": { description: "Comic not found" },
+          "500": { description: "Internal server error" },
+        },
+      },
+    },
     "/api/library": {
       get: {
         summary: "Get user library",
@@ -217,6 +249,10 @@ const spec = {
             },
           },
           "401": { description: "Authentication required" },
+          "500": { description: "Internal server error" },
+        },
+      },
+    },
     "/api/comic/{id}/page/generate": {
       post: {
         summary: "Generate page image",
@@ -245,14 +281,6 @@ const spec = {
         },
       },
     },
-    "/api/comic/{id}": {
-      get: {
-        summary: "Get comic",
-        description: "Returns the full comic object. No auth required.",
-        tags: ["Comic"],
-        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
-        responses: {
-          "200": { description: "Comic object", content: { "application/json": { schema: { type: "object", properties: { comic: { type: "object" } } } } } },
     "/api/comic/{id}/page/regenerate": {
       post: {
         summary: "Regenerate page image",
@@ -281,16 +309,6 @@ const spec = {
           "500": { description: "Internal server error" },
         },
       },
-      delete: {
-        summary: "Delete comic",
-        description: "Deletes a comic and all its associated storage images. Requires authentication and ownership.",
-        tags: ["Library"],
-        security: [{ bearerAuth: [] }],
-        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
-        responses: {
-          "200": { description: "Comic deleted", content: { "application/json": { schema: { type: "object", properties: { success: { type: "boolean" } } } } } },
-          "401": { description: "Authentication required" },
-          "403": { description: "Not the comic owner" },
     },
     "/api/comic/{id}/page/select": {
       put: {
@@ -316,6 +334,22 @@ const spec = {
         responses: {
           "200": { description: "Version selected", content: { "application/json": { schema: { type: "object", properties: { success: { type: "boolean" }, complete: { type: "boolean" } } } } } },
           "400": { description: "Validation or status error" },
+          "404": { description: "Comic not found" },
+          "500": { description: "Internal server error" },
+        },
+      },
+    },
+    "/api/comic/{id}/claim": {
+      put: {
+        summary: "Claim guest comic",
+        description: "Links a guest-created comic (userId null) to the authenticated user's account. Idempotent if already owned by the same user.",
+        tags: ["Library"],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+        responses: {
+          "200": { description: "Comic claimed", content: { "application/json": { schema: { type: "object", properties: { success: { type: "boolean" } } } } } },
+          "401": { description: "Authentication required" },
+          "403": { description: "Comic is owned by another user" },
           "404": { description: "Comic not found" },
           "500": { description: "Internal server error" },
         },

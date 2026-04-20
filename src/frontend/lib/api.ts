@@ -306,7 +306,6 @@ async function mockGetComic(id: string): Promise<{ comic: Comic }> {
   const isAutoComplete = _mockCompletedComics.has(id);
   const pageCount = 5;
 
-  // Collect pages generated in supervised mode
   const supervisedPages = Array.from({ length: pageCount }, (_, i) => {
     const versions = _mockPageVersions.get(`${id}-p${i + 1}`);
     return versions ?? null;
@@ -332,26 +331,6 @@ async function mockGetComic(id: string): Promise<{ comic: Comic }> {
         versions ? { pageNumber: i + 1, versions, selectedVersionIndex: versions.length - 1 } : null
       )
       .filter((p): p is Comic["pages"][number] => p !== null);
-  const pageCount = 5;
-
-  const allPagesSupervised = Array.from({ length: pageCount }, (_, i) =>
-    _mockPageVersions.has(`${id}-p${i + 1}`)
-  ).every(Boolean);
-
-  const isComplete = _mockCompletedComics.has(id) || allPagesSupervised;
-
-  let pages: Comic["pages"] = [];
-  if (_mockCompletedComics.has(id)) {
-    pages = Array.from({ length: pageCount }, (_, i) => ({
-      pageNumber: i + 1,
-      versions: [{ imageUrl: `https://picsum.photos/seed/${id}-p${i + 1}/800/1200`, generatedAt: new Date().toISOString() }],
-      selectedVersionIndex: 0,
-    }));
-  } else if (allPagesSupervised) {
-    pages = Array.from({ length: pageCount }, (_, i) => {
-      const versions = _mockPageVersions.get(`${id}-p${i + 1}`)!;
-      return { pageNumber: i + 1, versions, selectedVersionIndex: versions.length - 1 };
-    });
   }
 
   return {
@@ -371,7 +350,6 @@ async function mockGetComic(id: string): Promise<{ comic: Comic }> {
       ],
       pages,
       currentPageIndex: supervisedPageCount > 0 ? supervisedPageCount : (isComplete ? pageCount : 0),
-      currentPageIndex: isComplete ? pageCount : 0,
     },
   };
 }
