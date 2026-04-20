@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - run: npm install
+      - run: rm -f package-lock.json && npm install
       - run: npm run lint
 
   typecheck:
@@ -31,7 +31,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - run: npm install
+      - run: rm -f package-lock.json && npm install
       - run: npx tsc --noEmit
 
   test:
@@ -43,7 +43,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - run: npm install
+      - run: rm -f package-lock.json && npm install
       - run: npm run test:coverage
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -68,7 +68,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - run: npm install
+      - run: rm -f package-lock.json && npm install
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Build app
@@ -88,7 +88,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - run: npm install
+      - run: rm -f package-lock.json && npm install
       - name: Audit dependencies
         run: npm audit --audit-level=high
       - name: Run Gitleaks
