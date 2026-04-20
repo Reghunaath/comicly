@@ -1,78 +1,54 @@
-# block-env-local.ps1
-# PreToolUse hook: deny Claude Code access to .env.local and .drawio files
-# Place in: .claude/hooks/block-env-local.ps1
-
 $ErrorActionPreference = 'SilentlyContinue'
 
-# Read JSON context from stdin
-$rawInput = @()
-while ($line = [Console]::In.ReadLine()) {
-    $rawInput += $line
-}
-$jsonStr = $rawInput -join "`n"
+$jsonStr = [Console]::In.ReadToEnd()
 
 try {
     $hookInput = $jsonStr | ConvertFrom-Json
 } catch {
-    # JSON parse failure — don't block, let Claude proceed
     exit 0
 }
 
-$toolName  = $hookInput.tool_name
-$filePath  = $hookInput.tool_input.file_path
-$command   = $hookInput.tool_input.command
+$toolName = $hookInput.tool_name
+$filePath = $hookInput.tool_input.file_path
+$command  = $hookInput.tool_input.command
 
-# For Read/Write/Edit tools: check file_path
-if ($filePath) {
-    $basename = [System.IO.Path]::GetFileName($filePath)
-    $extension = [System.IO.Path]::GetExtension($filePath)
-    if ($basename -in @('.env', '.env.local')) {
-        $result = @{
-            hookSpecificOutput = @{
-                hookEventName          = 'PreToolUse'
-                permissionDecision     = 'deny'
-                permissionDecisionReason = 'Access to .env.local is blocked by project hook'
-            }
-        }
-        $result | ConvertTo-Json -Depth 3 -Compress
-        exit 0
-    }
-    if ($extension -eq '.drawio') {
-        $result = @{
-            hookSpecificOutput = @{
-                hookEventName          = 'PreToolUse'
-                permissionDecision     = 'deny'
-                permissionDecisionReason = 'Access to .drawio files is blocked by project hook'
-            }
-        }
-        $result | ConvertTo-Json -Depth 3 -Compress
-        exit 0
-    }
+function Test-SensitiveFile($path) {
+    if (-not $path) { return $false }
+    $basename = [System.IO.Path]::GetFileName($path)
+    return ($basename -eq '.env') -or
+           ($basename -match '^\.env\.') -or
+           ($basename -match '^secrets\.')
 }
 
-# For Bash tool: check if command references .env.local or .drawio
+function Block-Access($reason) {
+    @{
+        hookSpecificOutput = @{
+            hookEventName            = 'PreToolUse'
+            permissionDecision       = 'deny'
+            permissionDecisionReason = $reason
+        }
+    } | ConvertTo-Json -Depth 3 -Compress
+    exit 0
+}
+
+if (Test-SensitiveFile $filePath) {
+    $name = [System.IO.Path]::GetFileName($filePath)
+    Block-Access "BLOCKED: '$name' is a sensitive file - access denied by project security hook"
+}
+
+if ($filePath -and [System.IO.Path]::GetExtension($filePath) -eq '.drawio') {
+    Block-Access "BLOCKED: .drawio files are blocked by project hook"
+}
+
 if ($toolName -eq 'Bash' -and $command) {
-    if ($command -match '\.env(\.local)?(?=\s|[''";|&>]|$)') {
-        $result = @{
-            hookSpecificOutput = @{
-                hookEventName          = 'PreToolUse'
-                permissionDecision     = 'deny'
-                permissionDecisionReason = 'Bash command references .env.local, which is blocked by project hook'
-            }
-        }
-        $result | ConvertTo-Json -Depth 3 -Compress
-        exit 0
+    if ($command -match '\.env(\.[\w.-]+)?(?=\s|[''";|&>$]|$)') {
+        Block-Access "BLOCKED: Bash command references a sensitive .env file — denied by project security hook"
     }
-    if ($command -match '\.drawio(?=\s|[''";|&>]|$)') {
-        $result = @{
-            hookSpecificOutput = @{
-                hookEventName          = 'PreToolUse'
-                permissionDecision     = 'deny'
-                permissionDecisionReason = 'Bash command references .drawio file, which is blocked by project hook'
-            }
-        }
-        $result | ConvertTo-Json -Depth 3 -Compress
-        exit 0
+    if ($command -match '\bsecrets\.\w+(?=\s|[''";|&>$]|$)') {
+        Block-Access "BLOCKED: Bash command references a secrets file — denied by project security hook"
+    }
+    if ($command -match '\.drawio(?=\s|[''";|&>$]|$)') {
+        Block-Access "BLOCKED: Bash command references a .drawio file — denied by project hook"
     }
 }
 

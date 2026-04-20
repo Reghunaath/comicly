@@ -45,27 +45,18 @@ export default function ComicViewerPage({ comicId }: { comicId: string }) {
   }, [comicId]);
 
   // -------------------------------------------------------------------------
-  // Polling: check progress every 5s while generating
+  // Manual status check for comics still generating
   // -------------------------------------------------------------------------
 
-  useEffect(() => {
-    if (phase !== "generating") return;
-
-    const intervalId = setInterval(async () => {
-      try {
-        const { comic: updated } = await getComic(comicId);
-        setComic(updated);
-        if (updated.status === "complete") {
-          clearInterval(intervalId);
-          setPhase("complete");
-        }
-      } catch {
-        // Transient error — keep polling
-      }
-    }, 5000);
-
-    return () => clearInterval(intervalId);
-  }, [phase, comicId]);
+  async function handleCheckStatus() {
+    try {
+      const { comic: updated } = await getComic(comicId);
+      setComic(updated);
+      if (updated.status === "complete") setPhase("complete");
+    } catch {
+      // ignore transient errors
+    }
+  }
 
   // -------------------------------------------------------------------------
   // Share handler
@@ -173,7 +164,6 @@ export default function ComicViewerPage({ comicId }: { comicId: string }) {
 
   const title = comic?.script?.title ?? "Your Comic";
   const pages = comic?.pages ?? [];
-  const totalPages = comic?.pageCount ?? pages.length;
   const isOwner = !!(currentUser && comic?.userId && comic.userId === currentUser.id);
   const isGuest = currentUser === null;
 
@@ -293,12 +283,18 @@ export default function ComicViewerPage({ comicId }: { comicId: string }) {
         {phase === "generating" && (
           <div
             role="status"
-            aria-label="Generation progress"
-            className="mb-8 flex items-center gap-3 rounded-xl border border-border bg-surface px-5 py-4"
+            aria-label="Generation in progress"
+            className="mb-8 rounded-xl border border-border bg-surface px-5 py-4"
           >
-            <Spinner className="h-5 w-5 shrink-0 border-primary" />
             <p className="text-sm font-medium text-text">
-              Generating page {pages.length} of {totalPages}…
+              This comic is still being generated.{" "}
+              <button
+                type="button"
+                onClick={handleCheckStatus}
+                className="underline hover:opacity-75"
+              >
+                Check status
+              </button>
             </p>
           </div>
         )}
@@ -327,11 +323,7 @@ export default function ComicViewerPage({ comicId }: { comicId: string }) {
             })}
           </div>
         ) : (
-          phase === "generating" && (
-            <p className="text-center text-sm text-text-secondary">
-              Pages will appear as they are generated…
-            </p>
-          )
+          null
         )}
 
       </div>

@@ -224,11 +224,11 @@ describe("Generating state", () => {
 
     setup();
     expect(
-      await screen.findByRole("status", { name: /generation progress/i })
+      await screen.findByRole("status", { name: /generation in progress/i })
     ).toBeInTheDocument();
   });
 
-  it("shows the empty pages message when generating with no pages", async () => {
+  it("shows Check status button and no pages message when generating with no pages", async () => {
     server.use(
       http.get("/api/comic/:id", () =>
         HttpResponse.json({ comic: mockGeneratingComic() })
@@ -236,16 +236,18 @@ describe("Generating state", () => {
     );
 
     setup();
+    await screen.findByRole("status", { name: /generation in progress/i });
+    expect(screen.getByRole("button", { name: /check status/i })).toBeInTheDocument();
     expect(
-      await screen.findByText(/pages will appear as they are generated/i)
-    ).toBeInTheDocument();
+      screen.queryByText(/pages will appear as they are generated/i)
+    ).not.toBeInTheDocument();
   });
 
   it("does not show the generation progress banner in complete state", async () => {
     setup();
     await screen.findByText("Inspector Whiskers and the Clockwork Diamond");
     expect(
-      screen.queryByRole("status", { name: /generation progress/i })
+      screen.queryByRole("status", { name: /generation in progress/i })
     ).not.toBeInTheDocument();
   });
 });
@@ -254,10 +256,8 @@ describe("Generating state", () => {
 // 5. Polling
 // ---------------------------------------------------------------------------
 
-describe("Polling", () => {
-  it("transitions from generating to complete after poll resolves with complete status", async () => {
-    vi.useFakeTimers();
-
+describe("Manual status check", () => {
+  it("transitions from generating to complete when Check status is clicked", async () => {
     let callCount = 0;
     server.use(
       http.get("/api/comic/:id", () => {
@@ -267,18 +267,13 @@ describe("Polling", () => {
       })
     );
 
-    setup();
-    await act(async () => {}); // flush initial fetch
+    const { user } = setup();
+    await screen.findByRole("status", { name: /generation in progress/i });
 
-    expect(screen.getByRole("status", { name: /generation progress/i })).toBeInTheDocument();
-
-    await act(async () => {
-      vi.advanceTimersByTime(6000);
-    });
-    await act(async () => {}); // flush polling promise
+    await user.click(screen.getByRole("button", { name: /check status/i }));
 
     expect(
-      screen.queryByRole("status", { name: /generation progress/i })
+      screen.queryByRole("status", { name: /generation in progress/i })
     ).not.toBeInTheDocument();
   });
 });
@@ -377,7 +372,7 @@ describe("Export PDF button", () => {
       )
     );
     setup();
-    await screen.findByRole("status", { name: /generation progress/i });
+    await screen.findByRole("status", { name: /generation in progress/i });
     expect(
       screen.queryByRole("button", { name: /export pdf/i })
     ).not.toBeInTheDocument();
