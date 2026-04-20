@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getComic, deleteComic } from "@/frontend/lib/api";
+import { getComic, deleteComic, claimComic } from "@/frontend/lib/api";
 import { supabase } from "@/frontend/lib/supabase-browser";
 import type { Comic } from "@/frontend/lib/types";
 import type { User } from "@supabase/supabase-js";
@@ -34,6 +34,13 @@ export default function ComicViewerPage({ comicId }: { comicId: string }) {
         setComic(loaded);
         setCurrentUser(user);
         setPhase(loaded.status === "complete" ? "complete" : "generating");
+        if (user && loaded.userId === null) {
+          claimComic(comicId)
+            .then(() => {
+              setComic(prev => prev ? { ...prev, userId: user.id } : prev);
+            })
+            .catch(() => undefined);
+        }
       })
       .catch((err: unknown) => {
         if (err instanceof Error && err.message === "Comic not found") {
