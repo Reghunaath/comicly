@@ -101,12 +101,14 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: anthropics/claude-code-action@beta
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: |
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          direct_prompt: |
             Review this pull request using the C.L.E.A.R. framework:
             - **C**orrectness: Are there logic errors, off-by-one bugs, or incorrect assumptions?
             - **L**egibility: Is the code easy to read? Are names clear and consistent?
