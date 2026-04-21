@@ -96,6 +96,19 @@ export async function generateScript(id: string): Promise<{ script: Script }> {
   return res.json();
 }
 
+function normalizeScript(script: Script): Script {
+  return {
+    ...script,
+    pages: script.pages.map((page) => ({
+      ...page,
+      panels: page.panels.map((panel) => ({
+        ...panel,
+        caption: panel.caption ?? undefined,
+      })),
+    })),
+  };
+}
+
 export async function approveScript(
   id: string,
   generationMode: GenerationMode,
@@ -110,9 +123,13 @@ export async function approveScript(
   const res = await fetch(`/api/comic/${id}/approve`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ generationMode, script }),
+    body: JSON.stringify({ generationMode, script: normalizeScript(script) }),
   });
-  if (!res.ok) throw new Error("Failed to approve script");
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({ error: "Unknown error" }));
+    console.error("approve error body:", errBody);
+    throw new Error(errBody.error ?? "Failed to approve script");
+  }
 }
 
 export async function regenerateScript(
@@ -387,6 +404,14 @@ async function mockGenerateScript(id: string): Promise<{ script: Script }> {
       title: "Inspector Whiskers and the Clockwork Diamond",
       synopsis:
         "A detective cat in a steampunk city must recover a stolen diamond before the city's clock tower stops forever.",
+      characters: [
+        {
+          name: "Inspector Whiskers",
+          appearance: "A tabby cat with sharp green eyes and a distinguished air",
+          clothing: "Long detective coat, monocle, and a wide-brimmed hat",
+          personality: "Meticulous, dry-witted, and fiercely determined",
+        },
+      ],
       pages: [
         {
           pageNumber: 1,
