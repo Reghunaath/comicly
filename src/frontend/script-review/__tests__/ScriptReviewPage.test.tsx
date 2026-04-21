@@ -452,7 +452,7 @@ describe("Error — approve failure", () => {
     await user.click(screen.getByRole("button", { name: /approve & generate/i }));
 
     expect(
-      await screen.findByText(/failed to approve script/i)
+      await screen.findByText(/internal server error/i)
     ).toBeInTheDocument();
   });
 
@@ -467,7 +467,7 @@ describe("Error — approve failure", () => {
     await selectAutomatedMode(user);
     await user.click(screen.getByRole("button", { name: /approve & generate/i }));
 
-    await screen.findByText(/failed to approve script/i);
+    await screen.findByText(/internal server error/i);
     expect(
       screen.getByRole("button", { name: /approve & generate/i })
     ).not.toBeDisabled();
@@ -484,7 +484,7 @@ describe("Error — approve failure", () => {
     await selectAutomatedMode(user);
     await user.click(screen.getByRole("button", { name: /approve & generate/i }));
 
-    await screen.findByText(/failed to approve script/i);
+    await screen.findByText(/internal server error/i);
     expect(mockPush).not.toHaveBeenCalled();
   });
 });
