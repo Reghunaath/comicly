@@ -71,7 +71,7 @@ export interface ScriptPanel {
   panelNumber: number;                // 1-indexed within the page
   description: string;                // Visual description (used for image gen prompt)
   dialogue: DialogueLine[];
-  caption?: string;                   // Narrator text
+  caption?: string | null;             // Narrator text
 }
 
 export interface DialogueLine {
