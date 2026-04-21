@@ -43,17 +43,20 @@ export default function LibraryPage() {
   }, []);
 
   useEffect(() => {
-    if (USE_MOCK) {
-      loadLibrary();
-      return;
-    }
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    void (async () => {
+      if (USE_MOCK) {
+        await loadLibrary();
+        return;
+      }
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
         router.replace("/auth/login?redirect=/library");
         return;
       }
-      loadLibrary();
-    });
+      await loadLibrary();
+    })();
   }, [router, loadLibrary]);
 
   async function handleDelete(id: string) {
