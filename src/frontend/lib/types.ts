@@ -95,7 +95,7 @@ export interface ScriptPanel {
   panelNumber: number;
   description: string;
   dialogue: DialogueLine[];
-  caption?: string;
+  caption?: string | null;
 }
 
 export interface ScriptPage {

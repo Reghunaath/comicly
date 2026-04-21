@@ -52,7 +52,7 @@ const ScriptPanelSchema = z.object({
   panelNumber: z.number().int(),
   description: z.string(),
   dialogue: z.array(DialogueLineSchema),
-  caption: z.string().optional(),
+  caption: z.string().optional().nullable(),
 });
 
 const ScriptPageSchema = z.object({
