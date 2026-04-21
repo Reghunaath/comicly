@@ -8,6 +8,8 @@ import { getLibraryComics, deleteComic } from "@/frontend/lib/api";
 import type { ComicSummary } from "@/frontend/lib/types";
 import ComicCard from "./ComicCard";
 
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_API === "true";
+
 function getComicHref(comic: ComicSummary): string {
   if (comic.status === "input") return `/create?id=${comic.id}`;
   if (comic.status === "script_pending" || comic.status === "script_draft") {
@@ -41,6 +43,10 @@ export default function LibraryPage() {
   }, []);
 
   useEffect(() => {
+    if (USE_MOCK) {
+      loadLibrary();
+      return;
+    }
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         router.replace("/auth/login?redirect=/library");
@@ -82,7 +88,7 @@ export default function LibraryPage() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+    <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-text">My Library</h1>
         <Link
